@@ -156,6 +156,7 @@ public class ApplicationLoader extends Application {
                 MessagesController.getInstance(a).putUser(user, true);
                 SendMessagesHelper.getInstance(a).checkUnsentMessages();
             }
+            ReactionsController.getInstance(a).reloadAvailableReactions();
         }
 
         ApplicationLoader app = (ApplicationLoader) ApplicationLoader.applicationContext;

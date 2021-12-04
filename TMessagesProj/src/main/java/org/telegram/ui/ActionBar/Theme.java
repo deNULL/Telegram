@@ -2765,6 +2765,7 @@ public class Theme {
     public static TextPaint chat_replyTextPaint;
     public static TextPaint chat_contextResult_titleTextPaint;
     public static TextPaint chat_contextResult_descriptionTextPaint;
+    public static TextPaint chat_reactionCountPaint;
 
     public static Drawable chat_msgNoSoundDrawable;
     public static Drawable chat_composeShadowDrawable;
@@ -3442,6 +3443,16 @@ public class Theme {
     public static final String key_chat_inTextSelectionHighlight = "chat_inTextSelectionHighlight";
     public static final String key_chat_recordedVoiceHighlight = "key_chat_recordedVoiceHighlight";
     public static final String key_chat_TextSelectionCursor = "chat_TextSelectionCursor";
+
+    public static final String key_chat_outReactionBackground = "chat_outReactionBackground";
+    public static final String key_chat_outReactionText = "chat_outReactionText";
+    public static final String key_chat_outReactionBorder = "chat_outReactionBorder";
+    public static final String key_chat_inReactionBackground = "chat_inReactionBackground";
+    public static final String key_chat_inReactionText = "chat_inReactionText";
+    public static final String key_chat_inReactionBorder = "chat_inReactionBorder";
+    public static final String key_chat_extReactionBackground = "chat_extReactionBackground";
+    public static final String key_chat_extReactionText = "chat_extReactionText";
+    public static final String key_chat_extReactionBorder = "chat_extReactionBorder";
 
     public static final String key_voipgroup_listSelector = "voipgroup_listSelector";
     public static final String key_voipgroup_inviteMembersBackground = "voipgroup_inviteMembersBackground";
@@ -4277,6 +4288,16 @@ public class Theme {
         defaultColors.put(key_chat_mediaLoaderPhotoIconSelected, 0xffd9d9d9);
         defaultColors.put(key_chat_secretTimerBackground, 0xcc3e648e);
         defaultColors.put(key_chat_secretTimerText, 0xffffffff);
+
+        defaultColors.put(key_chat_outReactionBackground, 0x1f5ba756);
+        defaultColors.put(key_chat_outReactionText, 0xcc5ba756);
+        defaultColors.put(key_chat_outReactionBorder, 0xcc5ba756);
+        defaultColors.put(key_chat_inReactionBackground, 0x1a378dd1);
+        defaultColors.put(key_chat_inReactionText, 0xcc378dd1);
+        defaultColors.put(key_chat_inReactionBorder, 0xcc378dd1);
+        defaultColors.put(key_chat_extReactionBackground, 0x42214119);
+        defaultColors.put(key_chat_extReactionText, 0xffffffff);
+        defaultColors.put(key_chat_extReactionBorder, 0xffffffff);
 
         defaultColors.put(key_profile_creatorIcon, 0xff3a95d5);
         defaultColors.put(key_profile_actionIcon, 0xff81868a);
@@ -8184,6 +8205,8 @@ public class Theme {
             chat_adminPaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
             chat_namePaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
             chat_namePaint.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+            chat_reactionCountPaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
+            chat_reactionCountPaint.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
             chat_forwardNamePaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
             chat_replyNamePaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
             chat_replyNamePaint.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
@@ -8534,6 +8557,7 @@ public class Theme {
             chat_timePaint.setTextSize(AndroidUtilities.dp(12));
             chat_adminPaint.setTextSize(AndroidUtilities.dp(13));
             chat_namePaint.setTextSize(AndroidUtilities.dp(14));
+            chat_reactionCountPaint.setTextSize(AndroidUtilities.dp(12));
             chat_forwardNamePaint.setTextSize(AndroidUtilities.dp(14));
             chat_replyNamePaint.setTextSize(AndroidUtilities.dp(14));
             chat_replyTextPaint.setTextSize(AndroidUtilities.dp(14));

@@ -10,6 +10,7 @@ public class ReactionsController extends BaseController {
     private ArrayList<TLRPC.TL_availableReaction> reactions = new ArrayList<>();
 
     private Runnable lastRunnable = null;
+    private boolean isReloading;
 
     private static volatile ReactionsController[] Instance = new ReactionsController[UserConfig.MAX_ACCOUNT_COUNT];
 
@@ -28,10 +29,13 @@ public class ReactionsController extends BaseController {
 
     public ReactionsController(int num) {
         super(num);
-        reloadAvailableReactions();
     }
 
     public void reloadAvailableReactions() {
+        if (isReloading) {
+            return;
+        }
+        isReloading = true;
         if (lastRunnable != null) {
             Utilities.globalQueue.cancelRunnable(lastRunnable);
             lastRunnable = null;
@@ -60,12 +64,13 @@ public class ReactionsController extends BaseController {
                 reactions = ((TLRPC.TL_messages_availableReactions) response).reactions;
             }
             getNotificationCenter().postNotificationName(NotificationCenter.availableReactionsChanged);
+            isReloading = false;
         }));
     }
 
     public TLRPC.TL_availableReaction getReaction(String emoji) {
         for (TLRPC.TL_availableReaction reaction : reactions) {
-            if (reaction.reaction == emoji) {
+            if (reaction.reaction.equals(emoji)) {
                 return reaction;
             }
         }

@@ -66,11 +66,16 @@ public class MessageObject {
     public static final int MESSAGE_SEND_STATE_SEND_ERROR = 2;
     public static final int MESSAGE_SEND_STATE_EDITING = 3;
 
+    public static final int TYPE_TEXT = 0;
     public static final int TYPE_PHOTO = 1;
+    public static final int TYPE_DOCUMENT = 2;
     public static final int TYPE_VIDEO = 3;
+    public static final int TYPE_GEO = 4;
     public static final int TYPE_ROUND_VIDEO = 5;
+    public static final int TYPE_CONTACT = 12;
     public static final int TYPE_STICKER = 13;
     public static final int TYPE_ANIMATED_STICKER = 15;
+    public static final int TYPE_PHONE_CALL = 16;
     public static final int TYPE_POLL = 17;
 
     public int localType;
