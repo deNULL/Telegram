@@ -77,4 +77,12 @@ public class ReactionsController extends BaseController {
         reloadAvailableReactions();
         return null;
     }
+
+    public ArrayList<TLRPC.TL_availableReaction> getReactions() {
+        return reactions;
+    }
+
+    public int getReactionCount() {
+        return reactions.size();
+    }
 }

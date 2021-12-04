@@ -47,10 +47,11 @@ public class ReactionButtons {
     // reaction of the current user, or "" if none
     public String activeReaction = "";
 
-    public float maxWidth;
-    public float width;
-    public float height;
-    public float lastLineWidth;
+    public boolean isMeasured; // true if measure was called after the last reactions update
+    public int maxWidth;
+    public int width;
+    public int height;
+    public int lastLineWidth;
 
     public View parentView;
 
@@ -116,6 +117,7 @@ public class ReactionButtons {
 
     public void setReactions(TLRPC.TL_messageReactions reactions) {
         this.reactions = reactions;
+        this.isMeasured = false;
         buttons.clear();
         if (reactions != null && reactions.results != null) {
             HashMap<String, ArrayList<Long>> recentReactions = new HashMap<>();
@@ -151,22 +153,22 @@ public class ReactionButtons {
         this.isOutgoingMessage = isOutgoingMessage;
     }
 
-    public float measureButtonWidth(int count) {
+    public int measureButtonWidth(int count) {
         String str = String.format("%s", LocaleController.formatShortNumber(Math.max(1, count), null));
-        return AndroidUtilities.dp(iconLeft + iconSize + labelLeft) + Theme.chat_reactionCountPaint.measureText(str) + AndroidUtilities.dp(labelRight);
+        return AndroidUtilities.dp(iconLeft + iconSize + labelLeft) + (int)(Theme.chat_reactionCountPaint.measureText(str)) + AndroidUtilities.dp(labelRight);
     }
 
-    public float measureButtonHeight() {
+    public int measureButtonHeight() {
         return AndroidUtilities.dp(26);
     }
 
     public void measure() {
         width = 0;
         height = 0;
-        float x = 0;
-        float buttonHeight = measureButtonHeight();
+        int x = 0;
+        int buttonHeight = measureButtonHeight();
         for (Button button : buttons) {
-            float buttonWidth = measureButtonWidth(button.count);
+            int buttonWidth = measureButtonWidth(button.count);
             if (x > 0 && x + AndroidUtilities.dp(marginX) + buttonWidth > maxWidth) {
                 height += AndroidUtilities.dp(marginY) + buttonHeight;
                 x = buttonWidth;
@@ -181,14 +183,15 @@ public class ReactionButtons {
             height += buttonHeight;
         }
         lastLineWidth = x;
+        isMeasured = true;
     }
 
-    public float getInnerHeight() {
-        return mode == MODE_INSIDE ? height + AndroidUtilities.dp(12) : 0;
+    public int getInnerHeight() {
+        return mode == MODE_INSIDE ? height + AndroidUtilities.dp(10) : 0;
     }
 
-    public float getOuterHeight() {
-        return mode == MODE_OUTSIDE ? height + AndroidUtilities.dp(4) : 0;
+    public int getOuterHeight() {
+        return mode == MODE_OUTSIDE ? height + AndroidUtilities.dp(8) : 0;
     }
 
     public boolean onTouch(int action, float x, float y) {

@@ -140,6 +140,10 @@ public class TextCheckCell extends FrameLayout {
         textView.setTypeface(typeface);
     }
 
+    public void setTextSize(float size) {
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size);
+    }
+
     public void setHeight(int value) {
         height = value;
     }

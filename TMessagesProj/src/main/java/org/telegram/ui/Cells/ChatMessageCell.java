@@ -68,8 +68,6 @@ import android.widget.Toast;
 
 import androidx.core.graphics.ColorUtils;
 
-import com.google.android.exoplayer2.util.Log;
-
 import org.telegram.PhoneFormat.PhoneFormat;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
@@ -680,6 +678,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private ReactionButtons reactionButtons;
     private int reactionsInnerHeight;
     private int reactionsOuterHeight;
+    private int reactionsLeft; // Left padding
+    private int reactionsInnerInset; // Offset from bg left + right
+    private int reactionsBottom; // Offset from the bottom up
 
     private ImageReceiver avatarImage;
     private AvatarDrawable avatarDrawable;
@@ -3307,6 +3308,20 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             photoImage.setColorFilter(null);
             photoImage.setMediaStartEndTime(-1, -1);
             boolean canChangeRadius = true;
+
+            // Pre-init reaction buttons
+            reactionButtons.setReactions(messageObject.messageOwner.reactions);
+            int reactionsMode = isChat ? (
+                    messageObject.type == MessageObject.TYPE_STICKER ||
+                            messageObject.type == MessageObject.TYPE_ANIMATED_STICKER ||
+                            messageObject.type == MessageObject.TYPE_PHOTO ||
+                            messageObject.type == MessageObject.TYPE_VIDEO ||
+                            messageObject.type == MessageObject.TYPE_ROUND_VIDEO ?
+                            ReactionButtons.MODE_OUTSIDE : ReactionButtons.MODE_INSIDE
+            ) : ReactionButtons.MODE_MICRO;
+            reactionButtons.setOptions(reactionsMode, false, messageObject.isOutOwner());
+            reactionsBottom = 0;
+            reactionsInnerInset = AndroidUtilities.dp(reactionsMode == ReactionButtons.MODE_INSIDE ? 22 : 0);
 
             if (messageChanged) {
                 firstVisibleBlockNum = 0;
@@ -5998,8 +6013,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 substractBackgroundHeight = 0;
                 keyboardHeight = 0;
             }
+
             if (drawCommentButton) {
-                totalHeight += AndroidUtilities.dp(shouldDrawTimeOnMedia() ? 41.3f : 43);
+                int offs = AndroidUtilities.dp(shouldDrawTimeOnMedia() ? 41.3f : 43);
+                reactionsBottom += offs;
+                totalHeight += offs;
                 createSelectorDrawable(1);
             }
             if (drawPinnedBottom && drawPinnedTop) {
@@ -6096,23 +6114,21 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 photoImage.setRoundRadius(tl, tr, br, bl);
             }
 
-            reactionButtons.setReactions(messageObject.messageOwner.reactions);
-            int reactionsMode = isChat ? (
-                    messageObject.type == MessageObject.TYPE_STICKER ||
-                            messageObject.type == MessageObject.TYPE_ANIMATED_STICKER ||
-                            messageObject.type == MessageObject.TYPE_PHOTO ||
-                            messageObject.type == MessageObject.TYPE_VIDEO ||
-                            messageObject.type == MessageObject.TYPE_ROUND_VIDEO ?
-                            ReactionButtons.MODE_OUTSIDE : ReactionButtons.MODE_INSIDE
-            ) : ReactionButtons.MODE_MICRO;
-            reactionButtons.setMaxWidth(backgroundWidth - AndroidUtilities.dp(reactionsMode == ReactionButtons.MODE_INSIDE ? 22 : 0));
-            reactionButtons.setOptions(reactionsMode, false, messageObject.isOutOwner());
-            reactionButtons.measure();
-            // If current background is too narrow, buttons can make it bigger
-            backgroundWidth = Math.max(backgroundWidth, (int) reactionButtons.width);
-            reactionsInnerHeight = (int) reactionButtons.getInnerHeight();
-            reactionsOuterHeight = (int) reactionButtons.getOuterHeight();
         }
+
+        if (!reactionButtons.isMeasured) {
+            reactionButtons.setMaxWidth(backgroundWidth - reactionsInnerInset);
+            reactionButtons.measure();
+        }
+        // If current background is too narrow, buttons can make it bigger
+        backgroundWidth = Math.max(backgroundWidth, reactionButtons.width);
+        reactionsInnerHeight = reactionButtons.getInnerHeight();
+        reactionsOuterHeight = reactionButtons.getOuterHeight();
+        reactionsLeft = AndroidUtilities.dp(9) + getExtraTextX();
+        if (!currentMessageObject.isOutOwner() && (mediaBackground || !drawPinnedBottom)) {
+            reactionsLeft += AndroidUtilities.dp(6);
+        }
+
         if (messageIdChanged) {
             currentUrl = null;
             currentWebFile = null;
@@ -6625,17 +6641,26 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     private void calcBackgroundWidth(int maxWidth, int timeMore, int maxChildWidth) {
-        if (hasLinkPreview || hasOldCaptionPreview || hasGamePreview || hasInvoicePreview || maxWidth - currentMessageObject.lastLineWidth < timeMore || currentMessageObject.hasRtl) {
+        reactionButtons.setMaxWidth(maxWidth);
+        reactionButtons.measure();
+        int lastLineWidth = reactionButtons.lastLineWidth > 0 ? reactionButtons.lastLineWidth : currentMessageObject.lastLineWidth;
+        if (hasLinkPreview ||
+                hasOldCaptionPreview ||
+                hasGamePreview ||
+                hasInvoicePreview ||
+                maxWidth - lastLineWidth < timeMore ||
+                currentMessageObject.hasRtl) {
             totalHeight += AndroidUtilities.dp(14);
+            reactionsBottom += AndroidUtilities.dp(14);
             hasNewLineForTime = true;
-            backgroundWidth = Math.max(maxChildWidth, currentMessageObject.lastLineWidth) + AndroidUtilities.dp(31);
+            backgroundWidth = Math.max(maxChildWidth, lastLineWidth) + AndroidUtilities.dp(31);
             backgroundWidth = Math.max(backgroundWidth, (currentMessageObject.isOutOwner() ? timeWidth + AndroidUtilities.dp(17) : timeWidth) + AndroidUtilities.dp(31));
         } else {
-            int diff = maxChildWidth - getExtraTextX() - currentMessageObject.lastLineWidth;
+            int diff = maxChildWidth - getExtraTextX() - lastLineWidth;
             if (diff >= 0 && diff <= timeMore) {
                 backgroundWidth = maxChildWidth + timeMore - diff + AndroidUtilities.dp(31);
             } else {
-                backgroundWidth = Math.max(maxChildWidth, currentMessageObject.lastLineWidth + timeMore) + AndroidUtilities.dp(31);
+                backgroundWidth = Math.max(maxChildWidth, lastLineWidth + timeMore) + AndroidUtilities.dp(31);
             }
         }
     }
@@ -6925,7 +6950,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 instantWidth = backgroundWidth - AndroidUtilities.dp(34);
             }
             totalHeight += AndroidUtilities.dp(46);
-            if (currentMessageObject.type == 12) {
+            if (currentMessageObject.type == MessageObject.TYPE_CONTACT) {
                 totalHeight += AndroidUtilities.dp(14);
             }
             if (hasNewLineForTime) {
@@ -15106,10 +15131,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         canvas.save();
         if (reactionButtons.mode == ReactionButtons.MODE_MICRO) {
             // TODO
-            canvas.translate(textX, totalHeight);
+            canvas.translate(reactionsLeft, totalHeight);
         } else
         if (reactionButtons.mode == ReactionButtons.MODE_INSIDE) {
-            canvas.translate(textX, totalHeight - AndroidUtilities.dp(6));
+            canvas.translate(getCurrentBackgroundLeft() + reactionsLeft, totalHeight - reactionsBottom);
         } else {
             int addX;
             if (currentMessageObject.isOutOwner()) {

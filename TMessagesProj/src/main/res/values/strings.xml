@@ -4809,4 +4809,10 @@
     <string name="UserAcceptedToGroupAction">un1 was accepted into the group</string>
     <string name="UserAcceptedToGroupPush">%1$s was accepted into the group</string>
     <string name="UserAcceptedToGroupPushWithGroup">%2$s|%1$s was accepted into the group</string>
+
+    <string name="Reactions">Reactions</string>
+    <string name="EnableReactions">Enable Reactions</string>
+    <string name="EnableReactionsHintGroup">Allow chat members to react to chat messages.</string>
+    <string name="EnableReactionsHintChannel">Allow subscribers to react to channel posts.</string>
+    <string name="AvailableReactions">Available Reactions</string>
 </resources>

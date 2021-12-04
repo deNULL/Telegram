@@ -44,6 +44,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.messenger.ReactionsController;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
@@ -113,6 +114,7 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
     private TextCell membersCell;
     private TextCell memberRequestsCell;
     private TextCell inviteLinksCell;
+    private TextCell reactionsCell;
     private TextCell adminCell;
     private TextCell blockCell;
     private TextCell logCell;
@@ -810,6 +812,37 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
             presentFragment(fragment);
         });
 
+        reactionsCell = new TextCell(context);
+        reactionsCell.setBackgroundDrawable(Theme.getSelectorDrawable(false));
+        reactionsCell.setOnClickListener(v -> {
+            ChatReactionsActivity fragment = new ChatReactionsActivity(chatId);
+            fragment.setDelegate(new ChatReactionsActivity.ChatReactionsActivityDelegate() {
+                @Override
+                public void didSetReactions(ArrayList<String> reactions) {
+                    TLRPC.TL_messages_setChatAvailableReactions req = new TLRPC.TL_messages_setChatAvailableReactions();
+                    req.peer = getMessagesController().getInputPeer(-chatId);
+                    req.available_reactions = reactions;
+                    getConnectionsManager().sendRequest(req, (response, error) -> {
+                        if (response != null) {
+                            final TLRPC.Updates updates = (TLRPC.Updates) response;
+                            getMessagesController().processUpdates(updates, false);
+                            if (!updates.chats.isEmpty()) {
+                                AndroidUtilities.runOnUIThread(() -> {
+                                    TLRPC.Chat chat = updates.chats.get(0);
+                                    getMessagesController().loadFullChat(chat.id, 0, true);
+                                }, 1000);
+                            }
+                        }
+                    });
+
+                    info.available_reactions = reactions;
+                    updateFields(false);
+                }
+            });
+            fragment.setInfo(info);
+            presentFragment(fragment);
+        });
+
         adminCell = new TextCell(context);
         adminCell.setBackgroundDrawable(Theme.getSelectorDrawable(false));
         adminCell.setOnClickListener(v -> {
@@ -854,6 +887,7 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
         if (!isChannel) {
             infoContainer.addView(inviteLinksCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         }
+        infoContainer.addView(reactionsCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         infoContainer.addView(adminCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         infoContainer.addView(membersCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         if (memberRequestsCell != null && info != null && info.requests_pending > 0) {
@@ -1449,6 +1483,12 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
                     inviteLinksCell.setTextAndValueAndIcon(LocaleController.getString("InviteLinks", R.string.InviteLinks), "1", R.drawable.actions_link, true);
                 }
             }
+            if (info == null || !ChatObject.canUserDoAdminAction(currentChat, ChatObject.ACTION_CHANGE_INFO)) {
+                reactionsCell.setVisibility(View.GONE);
+            } else {
+                int total = ReactionsController.getInstance(currentAccount).getReactionCount();
+                reactionsCell.setTextAndValueAndIcon(LocaleController.getString("Reactions", R.string.Reactions), String.format("%d/%d", info.available_reactions.size(), total), R.drawable.actions_reactions, true);
+            }
         }
 
         if (stickersCell != null && info != null) {
@@ -1486,6 +1526,9 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
         themeDescriptions.add(new ThemeDescription(adminCell, ThemeDescription.FLAG_SELECTOR, null, null, null, null, Theme.key_listSelector));
         themeDescriptions.add(new ThemeDescription(adminCell, ThemeDescription.FLAG_TEXTCOLOR, new Class[]{TextCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         themeDescriptions.add(new ThemeDescription(adminCell, 0, new Class[]{TextCell.class}, new String[]{"imageView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayIcon));
+        themeDescriptions.add(new ThemeDescription(reactionsCell, ThemeDescription.FLAG_SELECTOR, null, null, null, null, Theme.key_listSelector));
+        themeDescriptions.add(new ThemeDescription(reactionsCell, ThemeDescription.FLAG_TEXTCOLOR, new Class[]{TextCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
+        themeDescriptions.add(new ThemeDescription(reactionsCell, 0, new Class[]{TextCell.class}, new String[]{"imageView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayIcon));
         themeDescriptions.add(new ThemeDescription(inviteLinksCell, ThemeDescription.FLAG_SELECTOR, null, null, null, null, Theme.key_listSelector));
         themeDescriptions.add(new ThemeDescription(inviteLinksCell, ThemeDescription.FLAG_TEXTCOLOR, new Class[]{TextCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         themeDescriptions.add(new ThemeDescription(inviteLinksCell, 0, new Class[]{TextCell.class}, new String[]{"imageView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayIcon));

@@ -3453,6 +3453,10 @@ public class Theme {
     public static final String key_chat_extReactionBackground = "chat_extReactionBackground";
     public static final String key_chat_extReactionText = "chat_extReactionText";
     public static final String key_chat_extReactionBorder = "chat_extReactionBorder";
+    public static final String key_chat_enableReactionOnBackground = "chat_enableReactionOnBackground";
+    public static final String key_chat_enableReactionOffBackground = "chat_enableReactionOffBackground";
+    public static final String key_chat_enableReactionSwitchTrack = "chat_enableReactionSwitchTrack";
+    public static final String key_chat_enableReactionSwitchTrackChecked = "chat_enableReactionSwitchTrackChecked";
 
     public static final String key_voipgroup_listSelector = "voipgroup_listSelector";
     public static final String key_voipgroup_inviteMembersBackground = "voipgroup_inviteMembersBackground";
@@ -4289,15 +4293,19 @@ public class Theme {
         defaultColors.put(key_chat_secretTimerBackground, 0xcc3e648e);
         defaultColors.put(key_chat_secretTimerText, 0xffffffff);
 
-        defaultColors.put(key_chat_outReactionBackground, 0x1f5ba756);
+        defaultColors.put(key_chat_outReactionBackground, 0xffdcf3cc);
         defaultColors.put(key_chat_outReactionText, 0xcc5ba756);
         defaultColors.put(key_chat_outReactionBorder, 0xcc5ba756);
-        defaultColors.put(key_chat_inReactionBackground, 0x1a378dd1);
+        defaultColors.put(key_chat_inReactionBackground, 0xffebf3fa);
         defaultColors.put(key_chat_inReactionText, 0xcc378dd1);
         defaultColors.put(key_chat_inReactionBorder, 0xcc378dd1);
         defaultColors.put(key_chat_extReactionBackground, 0x42214119);
         defaultColors.put(key_chat_extReactionText, 0xffffffff);
         defaultColors.put(key_chat_extReactionBorder, 0xffffffff);
+        defaultColors.put(key_chat_enableReactionOnBackground, 0xff579ed8);
+        defaultColors.put(key_chat_enableReactionOffBackground, 0xff9da7b1);
+        defaultColors.put(key_chat_enableReactionSwitchTrack, 0xff828e9a);
+        defaultColors.put(key_chat_enableReactionSwitchTrackChecked, 0xff3c88c6);
 
         defaultColors.put(key_profile_creatorIcon, 0xff3a95d5);
         defaultColors.put(key_profile_actionIcon, 0xff81868a);
