@@ -228,11 +228,11 @@ public class ReactionButtons {
     }
 
     public int getInnerHeight() {
-        return mode == MODE_INSIDE ? height + AndroidUtilities.dp(10) : 0;
+        return !buttons.isEmpty() && mode == MODE_INSIDE ? height + AndroidUtilities.dp(10) : 0;
     }
 
     public int getOuterHeight() {
-        return mode == MODE_OUTSIDE ? height + AndroidUtilities.dp(8) : 0;
+        return !buttons.isEmpty() && mode == MODE_OUTSIDE ? height + AndroidUtilities.dp(8) : 0;
     }
 
     public boolean onTouch(int action, float x, float y) {
