@@ -186,6 +186,13 @@ public class ReactionButtons {
     }
 
     public void measure() {
+        width = 0;
+        height = 0;
+        lastLineWidth = 0;
+        isMeasured = true;
+        if (buttons.isEmpty()) {
+            return;
+        }
         if (mode == MODE_MICRO) {
             width = AndroidUtilities.dp(buttons.size() * microIconSize + (buttons.size() - 1) * microIconSpacing + microIconRight);
             height = AndroidUtilities.dp(microIconSize);
@@ -197,12 +204,8 @@ public class ReactionButtons {
                     AndroidUtilities.dp(microIconSize), AndroidUtilities.dp(microIconSize)
                 );
             }
-            lastLineWidth = 0;
-            isMeasured = true;
             return;
         }
-        width = 0;
-        height = 0;
         int x = 0;
         int buttonHeight = AndroidUtilities.dp(26);
         for (Button button : buttons) {
