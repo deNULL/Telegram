@@ -2,6 +2,8 @@ package org.telegram.ui.Components;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
 import android.text.TextPaint;
 import android.view.View;
@@ -11,6 +13,7 @@ import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.R;
 import org.telegram.messenger.ReactionsController;
 import org.telegram.messenger.UserConfig;
 import org.telegram.tgnet.TLRPC;
@@ -48,6 +51,7 @@ public class ReactionButtons {
     // false: show only the number of reactions, true: show photos of last people reacted (up to 3)
     public boolean showLastReactions;
     public boolean isOutgoingMessage;
+    public boolean isTabs;
 
     // reaction of the current user, or "" if none
     public String activeReaction = "";
@@ -61,12 +65,45 @@ public class ReactionButtons {
 
     public View parentView;
 
+    public static class ButtonsView extends View {
+        public ReactionButtons buttons;
+
+        public ButtonsView(Context context) {
+            super(context);
+            buttons = new ReactionButtons(this);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            canvas.save();
+            canvas.translate(AndroidUtilities.dp(10), AndroidUtilities.dp(2));
+            buttons.draw(canvas);
+            canvas.restore();
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            setMeasuredDimension(buttons.width + AndroidUtilities.dp(20), buttons.height + AndroidUtilities.dp(12));
+        }
+    }
+
     public class Button {
         public String reaction;
         public int count;
         public RectF rect;
         public ImageReceiver icon;
         public ImageReceiver[] avatars;
+        public boolean isTotal;
+
+        public Button(int totalReactions) {
+            reaction = "-";
+            isTotal = true;
+            count = totalReactions;
+            rect = new RectF(0, 0, 0, 0);
+            icon = new ImageReceiver(parentView);
+            icon.setImageBitmap(parentView.getResources().getDrawable(R.drawable.msg_reactions_filled));
+            icon.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_chat_inReactionText), PorterDuff.Mode.MULTIPLY));
+        }
 
         public Button(TLRPC.TL_reactionCount reactionCount, ArrayList<Long> recentUserIds) {
             TLRPC.TL_availableReaction reaction = ReactionsController.getInstance(UserConfig.selectedAccount).getReaction(reactionCount.reaction);
@@ -153,12 +190,19 @@ public class ReactionButtons {
                 recentReactions.get(userReaction.reaction).add(userReaction.user_id);
             }
 
-            boolean allRecentFit = true;
+            boolean allRecentFit = !isTabs;
+            int totalReactions = 0;
             for (TLRPC.TL_reactionCount reactionCount : reactions.results) {
                 ArrayList<Long> recentUserIds = recentReactions.get(reactionCount.reaction);
                 if ((recentUserIds == null ? 0 : recentUserIds.size()) < reactionCount.count) {
                     allRecentFit = false;
                 }
+                totalReactions += reactionCount.count;
+            }
+
+            if (isTabs) {
+                // Add "total" button
+                buttons.add(new Button(totalReactions));
             }
 
             for (TLRPC.TL_reactionCount reactionCount : reactions.results) {
@@ -175,10 +219,11 @@ public class ReactionButtons {
         this.maxWidth = maxWidth;
     }
 
-    public void setOptions(int mode, boolean showLastReactions, boolean isOutgoingMessage) {
+    public void setOptions(int mode, boolean showLastReactions, boolean isOutgoingMessage, boolean isTabs) {
         this.mode = mode;
         this.showLastReactions = showLastReactions;
         this.isOutgoingMessage = isOutgoingMessage;
+        this.isTabs = isTabs;
     }
 
     public void setHighlightedReaction(String highlightedReaction) {
@@ -251,7 +296,6 @@ public class ReactionButtons {
         float r = AndroidUtilities.dp(12);
         for (int i = 0; i < buttons.size(); i++) {
             Button button = buttons.get(i);
-            TLRPC.TL_reactionCount reactionCount = reactions.results.get(i);
 
             roundPaint.setStyle(Paint.Style.FILL);
             if (mode == MODE_OUTSIDE) {
@@ -277,6 +321,7 @@ public class ReactionButtons {
             // Draw outline
             if (button.reaction.equals(activeReaction)) {
                 roundPaint.setStyle(Paint.Style.STROKE);
+                roundPaint.setStrokeWidth(AndroidUtilities.dp(1.33f));
                 if (mode == MODE_OUTSIDE) {
                     roundPaint.setColor(Theme.getColor(Theme.key_chat_extReactionBorder));
                 } else
@@ -296,6 +341,7 @@ public class ReactionButtons {
                 // TODO: use AvatarsImageView instead
                 for (int j = button.avatars.length - 1; j >= 0; j--) {
                     roundPaint.setStyle(Paint.Style.STROKE);
+                    roundPaint.setStrokeWidth(AndroidUtilities.dp(1.33f));
                     if (mode == MODE_OUTSIDE) {
                         roundPaint.setColor(Theme.getColor(Theme.key_chat_extReactionBackground));
                     } else
@@ -311,7 +357,7 @@ public class ReactionButtons {
                 }
             } else {
                 // Draw count
-                String str = String.format("%s", LocaleController.formatShortNumber(Math.max(1, reactionCount.count), null));
+                String str = String.format("%s", LocaleController.formatShortNumber(Math.max(1, button.count), null));
                 canvas.drawText(str, button.rect.left + AndroidUtilities.dp(iconLeft + iconSize + labelLeft), button.rect.bottom - AndroidUtilities.dp(labelBottom), Theme.chat_reactionCountPaint);
             }
         }

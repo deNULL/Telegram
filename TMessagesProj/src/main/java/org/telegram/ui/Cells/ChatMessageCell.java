@@ -3313,7 +3313,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             boolean canChangeRadius = true;
 
             // Pre-init reaction buttons
-            reactionButtons.setReactions(messageObject.messageOwner.reactions);
             int reactionsMode = isChat ? (
                     messageObject.type == MessageObject.TYPE_STICKER ||
                             messageObject.type == MessageObject.TYPE_ANIMATED_STICKER ||
@@ -3322,7 +3321,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                             messageObject.type == MessageObject.TYPE_ROUND_VIDEO ?
                             ReactionButtons.MODE_OUTSIDE : ReactionButtons.MODE_INSIDE
             ) : MODE_MICRO;
-            reactionButtons.setOptions(reactionsMode, false, messageObject.isOutOwner());
+            reactionButtons.setOptions(reactionsMode, false, messageObject.isOutOwner(), false);
+            reactionButtons.setReactions(messageObject.messageOwner.reactions);
             reactionsBottom = 0;
             reactionsInnerInset = AndroidUtilities.dp(reactionsMode == ReactionButtons.MODE_INSIDE ? 22 : 0);
 
