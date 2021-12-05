@@ -6646,6 +6646,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     private void calcBackgroundWidth(int maxWidth, int timeMore, int maxChildWidth) {
+        reactionButtons.setMaxWidth(maxWidth - reactionsInnerInset);
         reactionButtons.measure();
         reactionsTimeWidth = reactionButtons.mode == MODE_MICRO ? reactionButtons.width : 0;
         timeMore += reactionsTimeWidth;
