@@ -19939,6 +19939,29 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             shadowDrawable.getPadding(backgroundPaddings);
             popupLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
 
+            boolean showMessageSeen = currentChat != null && message.isOutOwner() && message.isSent() && !message.isEditing() && !message.isSending() && !message.isSendError() && !message.isContentUnread() && !message.isUnread() && (ConnectionsManager.getInstance(currentAccount).getCurrentTime() - message.messageOwner.date < 7 * 86400)  && (ChatObject.isMegagroup(currentChat) || !ChatObject.isChannel(currentChat)) && chatInfo != null && chatInfo.participants_count < 100 && !(message.messageOwner.action instanceof TLRPC.TL_messageActionChatJoinedByRequest);
+            MessageSeenView messageSeenView = null;
+            View messageSeenDivider = null;
+            if (showMessageSeen) {
+                messageSeenView = new MessageSeenView(contentView.getContext(), currentAccount, message, currentChat);
+                //Drawable shadowDrawable2 = ContextCompat.getDrawable(contentView.getContext(), R.drawable.popup_fixed_alert).mutate();
+                //shadowDrawable2.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground), PorterDuff.Mode.MULTIPLY));
+                //FrameLayout messageSeenLayout = new FrameLayout(contentView.getContext());
+                //messageSeenLayout.addView(messageSeenView);
+                //messageSeenLayout.setBackground(shadowDrawable2);
+                messageSeenView.setMinimumHeight(AndroidUtilities.dp(44));
+                popupLayout.addView(messageSeenView);
+
+                messageSeenDivider = new View(contentView.getContext());
+                //messageSeenDivider.setBackgroundColor(getThemedColor(Theme.key_dialogBackgroundGray));
+                messageSeenDivider.setBackgroundResource(R.drawable.menu_divider_bg);
+                //messageSeenDivider.setMinimumWidth(AndroidUtilities.dp(196));
+                messageSeenDivider.setMinimumHeight(AndroidUtilities.dp(8));
+                LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(0, AndroidUtilities.dp(8));
+                messageSeenDivider.setLayoutParams(layoutParams);
+                popupLayout.addView(messageSeenDivider);
+            }
+
             scrimPopupWindowItems = new ActionBarMenuSubItem[items.size() + (selectedObject.isSponsored() ? 1 : 0)];
             for (int a = 0, N = items.size(); a < N; a++) {
                 if (a == 0 && selectedObject.isSponsored()) {
@@ -20053,15 +20076,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 scrimPopupContainerLayout.addView(reactionBubble, params);
             }
 
-            boolean showMessageSeen = currentChat != null && message.isOutOwner() && message.isSent() && !message.isEditing() && !message.isSending() && !message.isSendError() && !message.isContentUnread() && !message.isUnread() && (ConnectionsManager.getInstance(currentAccount).getCurrentTime() - message.messageOwner.date < 7 * 86400)  && (ChatObject.isMegagroup(currentChat) || !ChatObject.isChannel(currentChat)) && chatInfo != null && chatInfo.participants_count < 100 && !(message.messageOwner.action instanceof TLRPC.TL_messageActionChatJoinedByRequest);
-            MessageSeenView messageSeenView = null;
-            if (showMessageSeen) {
-                messageSeenView = new MessageSeenView(contentView.getContext(), currentAccount, message, currentChat);
-                Drawable shadowDrawable2 = ContextCompat.getDrawable(contentView.getContext(), R.drawable.popup_fixed_alert).mutate();
-                shadowDrawable2.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground), PorterDuff.Mode.MULTIPLY));
-                FrameLayout messageSeenLayout = new FrameLayout(contentView.getContext());
-                messageSeenLayout.addView(messageSeenView);
-                messageSeenLayout.setBackground(shadowDrawable2);
+            if (messageSeenView != null) {
                 MessageSeenView finalMessageSeenView = messageSeenView;
                 messageSeenView.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -20222,7 +20237,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         });
                     }
                 });
-                scrimPopupContainerLayout.addView(messageSeenLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 60, 0, 0, -8, 36, 0));
+                //scrimPopupContainerLayout.addView(messageSeenLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 60, 0, 0, -8, 36, 0));
             }
             scrimPopupContainerLayout.addView(popupLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, -8, 36, 0));
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
@@ -20289,6 +20304,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             }
             if (messageSeenView != null) {
                 messageSeenView.getLayoutParams().width = scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(16);
+                messageSeenDivider.getLayoutParams().width = scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(16);
             }
             int popupX = v.getLeft() + (int) x - scrimPopupContainerLayout.getMeasuredWidth() + backgroundPaddings.left - AndroidUtilities.dp(28);
             if (popupX < AndroidUtilities.dp(6)) {
