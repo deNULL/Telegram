@@ -143,6 +143,10 @@ public class ReactionButtons {
         this.isMeasured = false;
         buttons.clear();
         if (reactions != null && reactions.results != null) {
+            if (!reactions.min) {
+                this.activeReaction = "";
+            }
+
             HashMap<String, ArrayList<Long>> recentReactions = new HashMap<>();
             for (TLRPC.TL_messageUserReaction userReaction : reactions.recent_reactons) {
                 if (!recentReactions.containsKey(userReaction.reaction)) {
@@ -161,6 +165,9 @@ public class ReactionButtons {
 
             for (TLRPC.TL_reactionCount reactionCount : reactions.results) {
                 ArrayList<Long> recentUserIds = recentReactions.get(reactionCount.reaction);
+                if (reactionCount.chosen) {
+                    this.activeReaction = reactionCount.reaction;
+                }
                 buttons.add(new Button(reactionCount, allRecentFit ? (recentUserIds == null ? new ArrayList<>() : recentUserIds) : null));
             }
         }
