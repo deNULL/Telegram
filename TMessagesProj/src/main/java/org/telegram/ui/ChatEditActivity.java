@@ -1487,7 +1487,10 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
                 reactionsCell.setVisibility(View.GONE);
             } else {
                 int total = ReactionsController.getInstance(currentAccount).getReactionCount();
-                reactionsCell.setTextAndValueAndIcon(LocaleController.getString("Reactions", R.string.Reactions), String.format("%d/%d", info.available_reactions.size(), total), R.drawable.actions_reactions, true);
+                reactionsCell.setTextAndValueAndIcon(LocaleController.getString("Reactions", R.string.Reactions), info.available_reactions.size() > 0 ?
+                    String.format("%d/%d", info.available_reactions.size(), total) :
+                    LocaleController.getString("ReactionsOff", R.string.ReactionsOff),
+                R.drawable.actions_reactions, true);
             }
         }
 

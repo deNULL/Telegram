@@ -14,6 +14,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.DatePickerDialog;
@@ -125,6 +126,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.messenger.ReactionsController;
 import org.telegram.messenger.SecretChatHelper;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.SharedConfig;
@@ -215,6 +217,7 @@ import org.telegram.ui.Components.PipRoundVideoView;
 import org.telegram.ui.Components.PollVotesAlert;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.ReactionBubble;
 import org.telegram.ui.Components.RecyclerAnimationScrollHelper;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ReportAlert;
@@ -19930,7 +19933,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             Rect rect = new Rect();
 
             ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert, themeDelegate);
-            popupLayout.setMinimumWidth(AndroidUtilities.dp(200));
+            popupLayout.setMinimumWidth(AndroidUtilities.dp(200 + 36));
             Rect backgroundPaddings = new Rect();
             Drawable shadowDrawable = getParentActivity().getResources().getDrawable(R.drawable.popup_fixed_alert).mutate();
             shadowDrawable.getPadding(backgroundPaddings);
@@ -20007,13 +20010,14 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
 
                 private int[] pos = new int[2];
 
+                @SuppressLint("ClickableViewAccessibility")
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
                     if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                         if (scrimPopupWindow != null && scrimPopupWindow.isShowing()) {
                             View contentView = scrimPopupWindow.getContentView();
                             contentView.getLocationInWindow(pos);
-                            rect.set(pos[0], pos[1], pos[0] + contentView.getMeasuredWidth(), pos[1] + contentView.getMeasuredHeight());
+                            rect.set(pos[0], pos[1], pos[0] + contentView.getMeasuredWidth() - AndroidUtilities.dp(36), pos[1] + contentView.getMeasuredHeight());
                             if (!rect.contains((int) event.getX(), (int) event.getY())) {
                                 scrimPopupWindow.dismiss();
                             }
@@ -20027,7 +20031,29 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 }
             });
             scrimPopupContainerLayout.setOrientation(LinearLayout.VERTICAL);
-            boolean showMessageSeen = currentChat != null && message.isOutOwner() && message.isSent() && !message.isEditing() && !message.isSending() && !message.isSendError() && !message.isContentUnread() && !message.isUnread() && (ConnectionsManager.getInstance(currentAccount).getCurrentTime() - message.messageOwner.date < 7 * 86400)  && (ChatObject.isMegagroup(currentChat) || !ChatObject.isChannel(currentChat)) && chatInfo != null && chatInfo.participants_count < 50 && !(message.messageOwner.action instanceof TLRPC.TL_messageActionChatJoinedByRequest);
+
+            ReactionBubble reactionBubble = null;
+            if (currentUser != null || (chatInfo != null && chatInfo.available_reactions.size() > 0)) {
+                ArrayList<TLRPC.TL_availableReaction> reactions = new ArrayList<>();
+                for (TLRPC.TL_availableReaction reaction : ReactionsController.getInstance(currentAccount).getReactions()) {
+                    if (currentUser != null) {
+                        reactions.add(reaction);
+                    } else {
+                        for (String emoji : chatInfo.available_reactions) {
+                            if (emoji.equals(reaction.reaction)) {
+                                reactions.add(reaction);
+                                break;
+                            }
+                        }
+                    }
+                }
+                reactionBubble = new ReactionBubble(contentView.getContext(), reactions);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutHelper.MATCH_PARENT, reactionBubble.height);
+                params.setMargins( AndroidUtilities.dp(ReactionBubble.marginLeft), 0, 0, AndroidUtilities.dp(ReactionBubble.marginBottom));
+                scrimPopupContainerLayout.addView(reactionBubble, params);
+            }
+
+            boolean showMessageSeen = currentChat != null && message.isOutOwner() && message.isSent() && !message.isEditing() && !message.isSending() && !message.isSendError() && !message.isContentUnread() && !message.isUnread() && (ConnectionsManager.getInstance(currentAccount).getCurrentTime() - message.messageOwner.date < 7 * 86400)  && (ChatObject.isMegagroup(currentChat) || !ChatObject.isChannel(currentChat)) && chatInfo != null && chatInfo.participants_count < 100 && !(message.messageOwner.action instanceof TLRPC.TL_messageActionChatJoinedByRequest);
             MessageSeenView messageSeenView = null;
             if (showMessageSeen) {
                 messageSeenView = new MessageSeenView(contentView.getContext(), currentAccount, message, currentChat);
@@ -20196,9 +20222,9 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         });
                     }
                 });
-                scrimPopupContainerLayout.addView(messageSeenLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 60));
+                scrimPopupContainerLayout.addView(messageSeenLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 60, 0, 0, -8, 36, 0));
             }
-            scrimPopupContainerLayout.addView(popupLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, showMessageSeen ? -8 : 0, 0, 0));
+            scrimPopupContainerLayout.addView(popupLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, -8, 36, 0));
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
                 public void dismiss() {
@@ -20249,7 +20275,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             scrimPopupWindow.setPauseNotifications(true);
             scrimPopupWindow.setDismissAnimationDuration(220);
             scrimPopupWindow.setOutsideTouchable(true);
-            scrimPopupWindow.setClippingEnabled(true);
+            //scrimPopupWindow.setClippingEnabled(true);
             scrimPopupWindow.setAnimationStyle(R.style.PopupContextAnimation);
             scrimPopupWindow.setFocusable(true);
             scrimPopupContainerLayout.measure(View.MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(1000), View.MeasureSpec.AT_MOST), View.MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(1000), View.MeasureSpec.AT_MOST));
@@ -20258,6 +20284,9 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             scrimPopupWindow.getContentView().setFocusableInTouchMode(true);
             popupLayout.setFitItems(true);
 
+            if (reactionBubble != null) {
+                reactionBubble.setWidth(scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(16));
+            }
             if (messageSeenView != null) {
                 messageSeenView.getLayoutParams().width = scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(16);
             }

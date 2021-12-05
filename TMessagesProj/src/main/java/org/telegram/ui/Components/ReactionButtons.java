@@ -74,8 +74,7 @@ public class ReactionButtons {
             this.reaction = reactionCount.reaction;
             count = reactionCount.count;
             rect = new RectF(0, 0, 0, 0);
-            icon = new ImageReceiver();
-            icon.setParentView(parentView);
+            icon = new ImageReceiver(parentView);
             if (reaction == null) {
                 return;
             }
@@ -85,8 +84,7 @@ public class ReactionButtons {
                 avatars = new ImageReceiver[recentUserIds.size()];
                 for (int i = 0; i < avatars.length; i++) {
                     TLRPC.User user = MessagesController.getInstance(UserConfig.selectedAccount).getUser(recentUserIds.get(i));
-                    avatars[i] = new ImageReceiver();
-                    avatars[i].setParentView(parentView);
+                    avatars[i] = new ImageReceiver(parentView);
                     avatars[i].setRoundRadius(AndroidUtilities.dp(avatarSize));
                     avatars[i].setImage(ImageLocation.getForUser(user, ImageLocation.TYPE_SMALL), "50_50", null, null, null, 0);
                 }
@@ -292,6 +290,7 @@ public class ReactionButtons {
 
             if (button.avatars != null) {
                 // Draw avatars (starting from back)
+                // TODO: use AvatarsImageView instead
                 for (int j = button.avatars.length - 1; j >= 0; j--) {
                     roundPaint.setStyle(Paint.Style.STROKE);
                     if (mode == MODE_OUTSIDE) {

@@ -58,6 +58,7 @@ public class MessageSeenView extends FrameLayout {
     ImageView iconView;
     int currentAccount;
     boolean isVoice;
+    int reactedCount;
 
     FlickerLoadingView flickerLoadingView;
 
@@ -84,13 +85,18 @@ public class MessageSeenView extends FrameLayout {
 
         titleView.setTextColor(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem));
 
-        TLRPC.TL_messages_getMessageReadParticipants req = new TLRPC.TL_messages_getMessageReadParticipants();
-        req.msg_id = messageObject.getId();
-        req.peer = MessagesController.getInstance(currentAccount).getInputPeer(messageObject.getDialogId());
+
+        reactedCount = 0;
+        if (messageObject.messageOwner.reactions != null) {
+            for (TLRPC.TL_reactionCount reactionCount : messageObject.messageOwner.reactions.results) {
+                reactedCount += reactionCount.count;
+            }
+        }
+
 
         iconView = new ImageView(context);
         addView(iconView, LayoutHelper.createFrame(24, 24, Gravity.LEFT | Gravity.CENTER_VERTICAL, 11, 0, 0, 0));
-        Drawable drawable = ContextCompat.getDrawable(context, isVoice ? R.drawable.msg_played : R.drawable.msg_seen).mutate();
+        Drawable drawable = ContextCompat.getDrawable(context, reactedCount > 0 ? R.drawable.msg_reactions : (isVoice ? R.drawable.msg_played : R.drawable.msg_seen)).mutate();
         drawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon), PorterDuff.Mode.MULTIPLY));
         iconView.setImageDrawable(drawable);
 
@@ -101,6 +107,10 @@ public class MessageSeenView extends FrameLayout {
             fromId = messageObject.messageOwner.from_id.user_id;
         }
         long finalFromId = fromId;
+
+        TLRPC.TL_messages_getMessageReadParticipants req = new TLRPC.TL_messages_getMessageReadParticipants();
+        req.msg_id = messageObject.getId();
+        req.peer = MessagesController.getInstance(currentAccount).getInputPeer(messageObject.getDialogId());
         ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
             FileLog.e("MessageSeenView request completed");
             if (error == null) {
@@ -226,6 +236,9 @@ public class MessageSeenView extends FrameLayout {
         avatarsImageView.commitTransition(false);
         if (peerIds.size() == 1 && users.get(0) != null) {
             titleView.setText(ContactsController.formatName(users.get(0).first_name, users.get(0).last_name));
+        } else
+        if (reactedCount > 0) {
+            titleView.setText(LocaleController.formatString("MessageReacted", R.string.MessageReacted, reactedCount, peerIds.size()));
         } else {
             titleView.setText(LocaleController.formatPluralString(isVoice ? "MessagePlayed" : "MessageSeen", peerIds.size()));
         }
