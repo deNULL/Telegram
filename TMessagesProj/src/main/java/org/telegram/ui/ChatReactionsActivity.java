@@ -117,7 +117,8 @@ public class ChatReactionsActivity extends BaseFragment {
         info = chatFull;
 
         enableReactions = chatFull.available_reactions.size() > 0;
-        Arrays.fill(enableReaction, false);
+        // Set everything to true, if no reactions is enabled => if user toggles switch on, it will be better than nothing
+        Arrays.fill(enableReaction, !enableReactions);
         for (String reaction : chatFull.available_reactions) {
             for (int i = 0; i < enableReaction.length; i++) {
                 if (reactions.get(i).reaction.equals(reaction)) {

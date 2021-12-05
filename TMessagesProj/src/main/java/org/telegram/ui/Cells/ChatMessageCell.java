@@ -8,6 +8,8 @@
 
 package org.telegram.ui.Cells;
 
+import static org.telegram.ui.Components.ReactionButtons.MODE_MICRO;
+
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
@@ -678,6 +680,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private ReactionButtons reactionButtons;
     private int reactionsInnerHeight;
     private int reactionsOuterHeight;
+    private int reactionsTimeWidth;
     private int reactionsLeft; // Left padding
     private int reactionsInnerInset; // Offset from bg left + right
     private int reactionsBottom; // Offset from the bottom up
@@ -3318,7 +3321,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                             messageObject.type == MessageObject.TYPE_VIDEO ||
                             messageObject.type == MessageObject.TYPE_ROUND_VIDEO ?
                             ReactionButtons.MODE_OUTSIDE : ReactionButtons.MODE_INSIDE
-            ) : ReactionButtons.MODE_MICRO;
+            ) : MODE_MICRO;
             reactionButtons.setOptions(reactionsMode, false, messageObject.isOutOwner());
             reactionsBottom = 0;
             reactionsInnerInset = AndroidUtilities.dp(reactionsMode == ReactionButtons.MODE_INSIDE ? 22 : 0);
@@ -6120,14 +6123,16 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             reactionButtons.setMaxWidth(backgroundWidth - reactionsInnerInset);
             reactionButtons.measure();
         }
-        // If current background is too narrow, buttons can make it bigger
-        backgroundWidth = Math.max(backgroundWidth, reactionButtons.width);
+        reactionsTimeWidth = reactionButtons.mode == MODE_MICRO ? reactionButtons.width : 0;
         reactionsInnerHeight = reactionButtons.getInnerHeight();
         reactionsOuterHeight = reactionButtons.getOuterHeight();
         reactionsLeft = AndroidUtilities.dp(9) + getExtraTextX();
         if (!currentMessageObject.isOutOwner() && (mediaBackground || !drawPinnedBottom)) {
             reactionsLeft += AndroidUtilities.dp(6);
         }
+
+        // If current background is too narrow, buttons can make it bigger
+        backgroundWidth = Math.max(backgroundWidth, reactionButtons.width);
 
         if (messageIdChanged) {
             currentUrl = null;
@@ -6641,8 +6646,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     private void calcBackgroundWidth(int maxWidth, int timeMore, int maxChildWidth) {
-        reactionButtons.setMaxWidth(maxWidth);
         reactionButtons.measure();
+        reactionsTimeWidth = reactionButtons.mode == MODE_MICRO ? reactionButtons.width : 0;
+        timeMore += reactionsTimeWidth;
         int lastLineWidth = reactionButtons.lastLineWidth > 0 ? reactionButtons.lastLineWidth : currentMessageObject.lastLineWidth;
         if (hasLinkPreview ||
                 hasOldCaptionPreview ||
@@ -6654,7 +6660,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             reactionsBottom += AndroidUtilities.dp(14);
             hasNewLineForTime = true;
             backgroundWidth = Math.max(maxChildWidth, lastLineWidth) + AndroidUtilities.dp(31);
-            backgroundWidth = Math.max(backgroundWidth, (currentMessageObject.isOutOwner() ? timeWidth + AndroidUtilities.dp(17) : timeWidth) + AndroidUtilities.dp(31));
+            backgroundWidth = Math.max(backgroundWidth, (currentMessageObject.isOutOwner() ? timeWidth + reactionsTimeWidth + AndroidUtilities.dp(17) : (timeWidth + reactionsTimeWidth)) + AndroidUtilities.dp(31));
         } else {
             int diff = maxChildWidth - getExtraTextX() - lastLineWidth;
             if (diff >= 0 && diff <= timeMore) {
@@ -10415,8 +10421,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             }
         }
 
-        drawReactionButtons(canvas);
-
         if (drawSideButton != 0) {
             if (currentMessageObject.isOutOwner()) {
                 sideStartX = getCurrentBackgroundLeft() - AndroidUtilities.dp(8 + 32);
@@ -10537,6 +10541,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 parent.invalidate();
             }
         }
+
+        drawReactionButtons(canvas);
+
         if (restore != Integer.MIN_VALUE) {
             canvas.restoreToCount(restore);
         }
@@ -12044,10 +12051,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else {
                 r = AndroidUtilities.dp(4);
             }
-            float x1 = timeX - AndroidUtilities.dp(bigRadius ? 6 : 4);
+            float x1 = timeX - AndroidUtilities.dp(bigRadius ? 6 : 4) - reactionsTimeWidth;
             float timeY = photoImage.getImageY2() + additionalTimeOffsetY;
             float y1 = timeY - AndroidUtilities.dp(23);
-            rect.set(x1, y1, x1 + timeWidth + AndroidUtilities.dp((bigRadius ? 12 : 8) + (currentMessageObject.isOutOwner() ? 20 : 0)), y1 + AndroidUtilities.dp(17));
+            rect.set(x1, y1, x1 + timeWidth + reactionsTimeWidth + AndroidUtilities.dp((bigRadius ? 12 : 8) + (currentMessageObject.isOutOwner() ? 20 : 0)), y1 + AndroidUtilities.dp(17));
 
             applyServiceShaderMatrix(getMeasuredWidth(), backgroundHeight, getX(), viewTop);
             canvas.drawRoundRect(rect, r, r, paint);
@@ -15129,9 +15136,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     private void drawReactionButtons(Canvas canvas) {
         canvas.save();
-        if (reactionButtons.mode == ReactionButtons.MODE_MICRO) {
-            // TODO
-            canvas.translate(reactionsLeft, totalHeight);
+        if (reactionButtons.mode == MODE_MICRO) {
+            int timeYOffset = -(drawCommentButton ? AndroidUtilities.dp(41.3f) : 0);
+            float timeY = shouldDrawTimeOnMedia() ? photoImage.getImageY2() + additionalTimeOffsetY - AndroidUtilities.dp(9.0f) : layoutHeight - AndroidUtilities.dp(pinnedBottom || pinnedTop ? 9.5f : 8.5f) + timeYOffset;
+            canvas.translate(timeX, timeY - AndroidUtilities.dp(13));
         } else
         if (reactionButtons.mode == ReactionButtons.MODE_INSIDE) {
             canvas.translate(getCurrentBackgroundLeft() + reactionsLeft, totalHeight - reactionsBottom);

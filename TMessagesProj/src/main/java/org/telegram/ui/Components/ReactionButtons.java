@@ -25,15 +25,20 @@ public class ReactionButtons {
     public final int marginX = 6;
     public final int marginY = 6;
 
-    public final int iconTop = 4;
-    public final int iconLeft = 8;
-    public final int iconSize = 18;
+    public final int iconTop = 3;
+    public final int iconLeft = 7;
+    public final int iconSize = 20;
+    public final int microIconSize = 15;
+    public final int microIconSpacing = 4;
+    public final int microIconRight = 5;
     public final int labelLeft = 5;
     public final int labelRight = 9;
     public final int labelBottom = 9;
     public final int avatarLeft = 5;
+    public final int avatarTop = 2;
+    public final int avatarRight = 2;
     public final int avatarOffset = 8;
-    public final int avatarSize = 16;
+    public final int avatarSize = 22;
 
     public static final int MODE_MICRO = 0; // small static icons (max 2) in the timestamp
     public static final int MODE_INSIDE = 1; // full-sized buttons inside the bubble
@@ -46,6 +51,7 @@ public class ReactionButtons {
 
     // reaction of the current user, or "" if none
     public String activeReaction = "";
+    public String highlightedReaction = "";
 
     public boolean isMeasured; // true if measure was called after the last reactions update
     public int maxWidth;
@@ -56,6 +62,7 @@ public class ReactionButtons {
     public View parentView;
 
     public class Button {
+        public String reaction;
         public int count;
         public RectF rect;
         public ImageReceiver icon;
@@ -64,6 +71,7 @@ public class ReactionButtons {
         public Button(TLRPC.TL_reactionCount reactionCount, ArrayList<Long> recentUserIds) {
             TLRPC.TL_availableReaction reaction = ReactionsController.getInstance(UserConfig.selectedAccount).getReaction(reactionCount.reaction);
 
+            this.reaction = reactionCount.reaction;
             count = reactionCount.count;
             rect = new RectF(0, 0, 0, 0);
             icon = new ImageReceiver();
@@ -87,6 +95,10 @@ public class ReactionButtons {
 
         public void setRect(float x, float y, float w, float h) {
             rect = new RectF(x, y, x + w, y + h);
+            if (mode == MODE_MICRO) {
+                icon.setImageCoords(x, y, w, h);
+                return;
+            }
             icon.setImageCoords(
                 x + AndroidUtilities.dp(iconLeft),
                 y + AndroidUtilities.dp(iconTop),
@@ -96,13 +108,24 @@ public class ReactionButtons {
             if (avatars != null) {
                 for (int i = 0; i < avatars.length; i++) {
                     avatars[i].setImageCoords(
-                            x + AndroidUtilities.dp(iconLeft + avatarLeft + avatarOffset * i),
-                            y + AndroidUtilities.dp(iconTop),
+                            x + AndroidUtilities.dp(iconLeft + iconSize + avatarLeft + avatarOffset * i),
+                            y + AndroidUtilities.dp(avatarTop),
                             AndroidUtilities.dp(avatarSize),
                             AndroidUtilities.dp(avatarSize)
                     );
                 }
             }
+        }
+
+        public int measureWidth() {
+            if (mode == MODE_MICRO) {
+                return microIconSize;
+            }
+            if (avatars != null) {
+                return AndroidUtilities.dp(iconLeft + iconSize + avatarLeft + avatarOffset * (avatars.length - 1) + avatarSize + avatarRight);
+            }
+            String str = String.format("%s", LocaleController.formatShortNumber(Math.max(1, count), null));
+            return AndroidUtilities.dp(iconLeft + iconSize + labelLeft) + (int)(Theme.chat_reactionCountPaint.measureText(str)) + AndroidUtilities.dp(labelRight);
         }
     }
     public ArrayList<Button> buttons = new ArrayList<>();
@@ -153,22 +176,32 @@ public class ReactionButtons {
         this.isOutgoingMessage = isOutgoingMessage;
     }
 
-    public int measureButtonWidth(int count) {
-        String str = String.format("%s", LocaleController.formatShortNumber(Math.max(1, count), null));
-        return AndroidUtilities.dp(iconLeft + iconSize + labelLeft) + (int)(Theme.chat_reactionCountPaint.measureText(str)) + AndroidUtilities.dp(labelRight);
-    }
-
-    public int measureButtonHeight() {
-        return AndroidUtilities.dp(26);
+    public void setHighlightedReaction(String highlightedReaction) {
+        this.highlightedReaction = highlightedReaction;
     }
 
     public void measure() {
+        if (mode == MODE_MICRO) {
+            width = AndroidUtilities.dp(buttons.size() * microIconSize + (buttons.size() - 1) * microIconSpacing + microIconRight);
+            height = AndroidUtilities.dp(microIconSize);
+            for (int i = 0; i < buttons.size(); i++) {
+                Button button = buttons.get(i);
+                // Button are right-aligned, so coords are negative
+                button.setRect(
+                    -width + AndroidUtilities.dp(microIconSize + microIconSpacing) * i, 0,
+                    AndroidUtilities.dp(microIconSize), AndroidUtilities.dp(microIconSize)
+                );
+            }
+            lastLineWidth = 0;
+            isMeasured = true;
+            return;
+        }
         width = 0;
         height = 0;
         int x = 0;
-        int buttonHeight = measureButtonHeight();
+        int buttonHeight = AndroidUtilities.dp(26);
         for (Button button : buttons) {
-            int buttonWidth = measureButtonWidth(button.count);
+            int buttonWidth = button.measureWidth();
             if (x > 0 && x + AndroidUtilities.dp(marginX) + buttonWidth > maxWidth) {
                 height += AndroidUtilities.dp(marginY) + buttonHeight;
                 x = buttonWidth;
@@ -200,21 +233,50 @@ public class ReactionButtons {
     }
 
     public void draw(Canvas canvas) {
+        if (mode == MODE_MICRO) {
+            for (Button button : buttons) {
+                button.icon.draw(canvas);
+            }
+            return;
+        }
+
         float r = AndroidUtilities.dp(12);
         for (int i = 0; i < buttons.size(); i++) {
             Button button = buttons.get(i);
             TLRPC.TL_reactionCount reactionCount = reactions.results.get(i);
 
+            roundPaint.setStyle(Paint.Style.FILL);
             if (mode == MODE_OUTSIDE) {
                 roundPaint.setColor(Theme.getColor(Theme.key_chat_extReactionBackground));
                 Theme.chat_reactionCountPaint.setColor(Theme.getColor(Theme.key_chat_extReactionText));
+            } else
+            if (isOutgoingMessage) {
+                roundPaint.setColor(Theme.getColor(Theme.key_chat_outReactionBackground));
+                Theme.chat_reactionCountPaint.setColor(Theme.getColor(Theme.key_chat_outReactionText));
             } else {
                 roundPaint.setColor(Theme.getColor(Theme.key_chat_inReactionBackground));
                 Theme.chat_reactionCountPaint.setColor(Theme.getColor(Theme.key_chat_inReactionText));
             }
 
+            // Highlight override
+            if (button.reaction.equals(highlightedReaction)) {
+                roundPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            }
+
             // Draw background
-            if (mode != MODE_MICRO) {
+            canvas.drawRoundRect(button.rect, r, r, roundPaint);
+
+            // Draw outline
+            if (button.reaction.equals(activeReaction)) {
+                roundPaint.setStyle(Paint.Style.STROKE);
+                if (mode == MODE_OUTSIDE) {
+                    roundPaint.setColor(Theme.getColor(Theme.key_chat_extReactionBorder));
+                } else
+                if (isOutgoingMessage) {
+                    roundPaint.setColor(Theme.getColor(Theme.key_chat_outReactionBorder));
+                } else {
+                    roundPaint.setColor(Theme.getColor(Theme.key_chat_inReactionBorder));
+                }
                 canvas.drawRoundRect(button.rect, r, r, roundPaint);
             }
 
@@ -222,8 +284,20 @@ public class ReactionButtons {
             button.icon.draw(canvas);
 
             if (button.avatars != null) {
-                // Draw avatars
-                for (ImageReceiver avatar : button.avatars) {
+                // Draw avatars (starting from back)
+                for (int j = button.avatars.length - 1; j >= 0; j--) {
+                    roundPaint.setStyle(Paint.Style.STROKE);
+                    if (mode == MODE_OUTSIDE) {
+                        roundPaint.setColor(Theme.getColor(Theme.key_chat_extReactionBackground));
+                    } else
+                    if (isOutgoingMessage) {
+                        roundPaint.setColor(Theme.getColor(Theme.key_chat_outReactionBackground));
+                    } else {
+                        roundPaint.setColor(Theme.getColor(Theme.key_chat_inReactionBackground));
+                    }
+                    ImageReceiver avatar = button.avatars[j];
+                    RectF rect = new RectF(avatar.getImageX(), avatar.getImageY(), avatar.getImageX() + avatar.getImageWidth(), avatar.getImageY() + avatar.getImageHeight());
+                    canvas.drawRoundRect(rect, r, r, roundPaint);
                     avatar.draw(canvas);
                 }
             } else {
