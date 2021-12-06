@@ -159,7 +159,8 @@ public class ReactionButtons {
                     TLRPC.User user = MessagesController.getInstance(UserConfig.selectedAccount).getUser(recentUserIds.get(i));
                     avatars[i] = new ImageReceiver(parentView);
                     drawables[i] = new AvatarDrawable();
-                    drawables[i].setTextSize(AndroidUtilities.dp(avatarSize * 0.5f));
+                    drawables[i].setInfo(user);
+                    //drawables[i].setTextSize(AndroidUtilities.dp(12f));
                     avatars[i].setRoundRadius(AndroidUtilities.dp(avatarSize * 0.5f));
                     avatars[i].setForUserOrChat(user, drawables[i]);
                     //avatars[i].setImage(ImageLocation.getForUser(user, ImageLocation.TYPE_SMALL), "50_50", null, null, null, 0);
