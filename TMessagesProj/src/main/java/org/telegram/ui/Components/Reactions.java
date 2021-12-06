@@ -66,12 +66,18 @@ public class Reactions {
         buttons.setHighlightedReaction(button.reaction);
 
         int totalHeight = ca.contentView.getHeightWithKeyboard();
-        int height = AndroidUtilities.dp(320);
-        int keyboardHeight = ca.contentView.measureKeyboardHeight();
-        if (keyboardHeight > AndroidUtilities.dp(20)) {
-            totalHeight += keyboardHeight;
+        int availableHeight = totalHeight - ca.scrimPopupY - AndroidUtilities.dp(46 + 16);
+
+        if (SharedConfig.messageSeenHintCount > 0 && ca.contentView.getKeyboardHeight() < AndroidUtilities.dp(20)) {
+            availableHeight -= AndroidUtilities.dp(52);
+            Bulletin bulletin = BulletinFactory.of(ca).createErrorBulletin(AndroidUtilities.replaceTags(LocaleController.getString("MessageSeenTooltipMessage", R.string.MessageSeenTooltipMessage)));
+            bulletin.tag = 1;
+            bulletin.setDuration(4000);
+            bulletin.show();
+            SharedConfig.updateMessageSeenHintCount(SharedConfig.messageSeenHintCount - 1);
+        } else if (ca.contentView.getKeyboardHeight() > AndroidUtilities.dp(20)) {
+            availableHeight -= ca.contentView.getKeyboardHeight() / 3f;
         }
-        boolean dropUp = cell.getTop() + y > totalHeight / 2;
 
         MessageObject message = cell.getMessageObject();
 
@@ -126,7 +132,10 @@ public class Reactions {
         linearLayout.setOrientation(LinearLayout.VERTICAL);
         RecyclerListView listView = messageSeenView.createListView();
 
-        linearLayout.addView(listView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 320, Gravity.LEFT | (dropUp ? Gravity.BOTTOM : Gravity.TOP), 0, 0, 0, 0));
+        linearLayout.addView(listView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 320, 0, 0, 0, 0));
+
+        messageSeenView.availableHeight = availableHeight;
+        messageSeenView.updateListViewHeight();
 
         Drawable shadowDrawable3 = ContextCompat.getDrawable(ca.contentView.getContext(), R.drawable.popup_fixed_alert).mutate();
         shadowDrawable3.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground), PorterDuff.Mode.MULTIPLY));
@@ -201,12 +210,12 @@ public class Reactions {
             ca.fragmentView.getLocationInWindow(location);
             popupX += location[0];
         }
-
-
+        int height = linearLayout.getMeasuredHeight();
+        int keyboardHeight = ca.contentView.measureKeyboardHeight();
+        if (keyboardHeight > AndroidUtilities.dp(20)) {
+            totalHeight += keyboardHeight;
+        }
         int popupY;
-        if (dropUp) {
-            popupY = (int) (ca.chatListView.getY() + cell.getTop() + y1 - AndroidUtilities.dp(3));
-        } else
         if (height < totalHeight) {
             popupY = (int) (ca.chatListView.getY() + cell.getTop() + y - AndroidUtilities.dp(3));
             if (height - backgroundPaddings.top - backgroundPaddings.bottom > AndroidUtilities.dp(240)) {
@@ -220,10 +229,7 @@ public class Reactions {
         } else {
             popupY = ca.inBubbleMode ? 0 : AndroidUtilities.statusBarHeight;
         }
-
-        messageSeenView.availableHeight = (dropUp ? popupY : (totalHeight - popupY)) - (int) ca.chatListView.getY();
-        messageSeenView.updateListViewHeight();
-        ca.scrimPopupWindow.showAtLocation(ca.chatListView, Gravity.LEFT | (dropUp ? Gravity.BOTTOM : Gravity.TOP), ca.scrimPopupX = popupX, ca.scrimPopupY = popupY);
+        ca.scrimPopupWindow.showAtLocation(ca.chatListView, Gravity.LEFT | Gravity.TOP, ca.scrimPopupX = popupX, ca.scrimPopupY = popupY);
         ca.chatListView.stopScroll();
         ca.chatLayoutManager.setCanScrollVertically(false);
         ca.scrimView = cell;
