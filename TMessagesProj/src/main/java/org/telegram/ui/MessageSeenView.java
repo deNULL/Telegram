@@ -68,7 +68,7 @@ public class MessageSeenView extends FrameLayout {
     int currentAccount;
     boolean isVoice;
     int reactedCount;
-    String currentReactionFilter = "-";
+    String currentReactionFilter;
     String currentNextOffset = null;
     long dialogId;
     int messageId;
@@ -80,7 +80,7 @@ public class MessageSeenView extends FrameLayout {
     boolean loadingNext;
 
     public MessageSeenView(@NonNull Context context, int currentAccount, MessageObject messageObject, TLRPC.Chat chat) {
-        this(context, currentAccount, messageObject, chat, null);
+        this(context, currentAccount, messageObject, chat, "-");
     }
 
     public MessageSeenView(@NonNull Context context, int currentAccount, MessageObject messageObject, TLRPC.Chat chat, String reactionFilter) {
