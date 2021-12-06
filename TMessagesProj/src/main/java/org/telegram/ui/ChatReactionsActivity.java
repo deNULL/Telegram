@@ -35,6 +35,7 @@ import android.widget.Toast;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
@@ -296,7 +297,7 @@ public class ChatReactionsActivity extends BaseFragment {
                     break;
                 case 3:
                 default:
-                    view = new TextCheckCell(mContext);
+                    view = new TextCheckCell(mContext, 21, false, true);
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                     break;
             }
@@ -330,7 +331,8 @@ public class ChatReactionsActivity extends BaseFragment {
                 case 3:
                     TextCheckCell reactionCell = (TextCheckCell) holder.itemView;
                     TLRPC.TL_availableReaction reaction = reactions.get(position - firstReactionRow);
-                    reactionCell.setTextAndCheck(reaction.reaction + " " + reaction.title, enableReaction[position - firstReactionRow], true);
+                    reactionCell.imageView.setImage(ImageLocation.getForDocument(reaction.static_icon), "50_50", null, null, null);
+                    reactionCell.setTextAndCheck(reaction.title, enableReaction[position - firstReactionRow], true);
                     break;
             }
         }
