@@ -20318,8 +20318,8 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 reactionBubble.setWidth(scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(16));
             }
             if (messageSeenView != null) {
-                messageSeenView.getLayoutParams().width = scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(16);
-                messageSeenDivider.getLayoutParams().width = scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(16);
+                //messageSeenView.getLayoutParams().width = scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(63);
+                messageSeenDivider.getLayoutParams().width = scrimPopupContainerLayout.getMeasuredWidth() - AndroidUtilities.dp(63);
             }
             int popupX = v.getLeft() + (int) x - scrimPopupContainerLayout.getMeasuredWidth() + backgroundPaddings.left - AndroidUtilities.dp(28);
             if (popupX < AndroidUtilities.dp(6)) {
