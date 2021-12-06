@@ -66,7 +66,10 @@ public class Reactions {
         buttons.setHighlightedReaction(button.reaction);
 
         int totalHeight = ca.contentView.getHeightWithKeyboard();
-        int availableHeight = totalHeight - ca.scrimPopupY - AndroidUtilities.dp(46 + 16);
+        int availableHeight = totalHeight - (int) (ca.chatListView.getY() + cell.getTop() + y) - AndroidUtilities.dp(16);
+        if (availableHeight < AndroidUtilities.dp(150)) {
+            availableHeight = AndroidUtilities.dp(150);
+        }
 
         if (SharedConfig.messageSeenHintCount > 0 && ca.contentView.getKeyboardHeight() < AndroidUtilities.dp(20)) {
             availableHeight -= AndroidUtilities.dp(52);

@@ -15196,7 +15196,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             return timeX;
         } else
         if (reactionButtons.mode == ReactionButtons.MODE_INSIDE) {
-            return getCurrentBackgroundLeft() + reactionsLeft;
+            return (currentBackgroundDrawable == null ? 0 : getCurrentBackgroundLeft()) + reactionsLeft;
         } else {
             int addX;
             if (currentMessageObject.isOutOwner()) {
