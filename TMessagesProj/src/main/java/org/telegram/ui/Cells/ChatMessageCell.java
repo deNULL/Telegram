@@ -3330,7 +3330,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                             messageObject.type == MessageObject.TYPE_ANIMATED_STICKER ||
                             messageObject.type == MessageObject.TYPE_PHOTO ||
                             messageObject.type == MessageObject.TYPE_VIDEO ||
-                            messageObject.type == MessageObject.TYPE_ROUND_VIDEO ?
+                            messageObject.type == MessageObject.TYPE_ROUND_VIDEO ||
+                            messageObject.type == MessageObject.TYPE_GEO || // Geo and Gif were not mentioned in contest, but they also draw time inside
+                            messageObject.type == MessageObject.TYPE_GIF ?
                             ReactionButtons.MODE_OUTSIDE : ReactionButtons.MODE_INSIDE
             ) : MODE_MICRO;
             reactionButtons.setOptions(reactionsMode, false, messageObject.isOutOwner(), false);
@@ -4552,7 +4554,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     namesOffset -= AndroidUtilities.dp(1);
                 }
             } else
-            if (messageObject.type == 14) {
+            if (messageObject.type == MessageObject.TYPE_MUSIC) {
                 drawName = (messageObject.isFromGroup() && messageObject.isSupergroup() || messageObject.isImportedForward() && messageObject.messageOwner.fwd_from.from_id == null) && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0);
                 if (AndroidUtilities.isTablet()) {
                     backgroundWidth = Math.min(AndroidUtilities.getMinTabletSide() - AndroidUtilities.dp(drawAvatar ? 102 : 50), AndroidUtilities.dp(270));
@@ -4828,6 +4830,16 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     namesOffset -= AndroidUtilities.dp(1);
                 }
                 insantTextNewLine = false;
+                if (reactionButtons.lastLineWidth > 0) {
+                    reactionButtons.setMaxWidth(backgroundWidth - reactionsInnerInset);
+                    reactionButtons.measure();
+                    reactionsTimeWidth = reactionButtons.mode == MODE_MICRO ? reactionButtons.width : 0;
+                    if (backgroundWidth - reactionButtons.lastLineWidth < timeWidth + reactionsTimeWidth) {
+                        totalHeight += AndroidUtilities.dp(14);
+                        reactionsBottom += AndroidUtilities.dp(14);
+                        insantTextNewLine = true;
+                    }
+                } else
                 if (media.poll.public_voters || media.poll.multiple_choice) {
                     int instantTextWidth = 0;
                     for (int a = 0; a < 3; a++) {
@@ -12988,7 +13000,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     invalidate();
                 }
             }
-        } else if (currentMessageObject.type == 4) {
+        } else if (currentMessageObject.type == MessageObject.TYPE_GEO) {
             if (docTitleLayout != null) {
                 if (currentMessageObject.isOutOwner()) {
                     Theme.chat_locationTitlePaint.setColor(getThemedColor(Theme.key_chat_messageTextOut));
@@ -13090,7 +13102,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     canvas.restore();
                 }
             }
-        } else if (currentMessageObject.type == 16) {
+        } else if (currentMessageObject.type == MessageObject.TYPE_PHONE_CALL) {
             if (currentMessageObject.isOutOwner()) {
                 Theme.chat_audioTitlePaint.setColor(getThemedColor(Theme.key_chat_messageTextOut));
                 Theme.chat_contactPhonePaint.setColor(getThemedColor(isDrawSelectionBackground() ? Theme.key_chat_outTimeSelectedText : Theme.key_chat_outTimeText));

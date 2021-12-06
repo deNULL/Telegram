@@ -3445,6 +3445,7 @@ public class Theme {
     public static final String key_chat_TextSelectionCursor = "chat_TextSelectionCursor";
 
     public static final String key_chat_outReactionBackground = "chat_outReactionBackground";
+    public static final String key_chat_outReactionBackgroundHighlight = "chat_outReactionBackgroundHighlight";
     public static final String key_chat_outReactionText = "chat_outReactionText";
     public static final String key_chat_outReactionBorder = "chat_outReactionBorder";
     public static final String key_chat_inReactionBackground = "chat_inReactionBackground";
@@ -4294,6 +4295,7 @@ public class Theme {
         defaultColors.put(key_chat_secretTimerText, 0xffffffff);
 
         defaultColors.put(key_chat_outReactionBackground, 0xffdcf3cc);
+        defaultColors.put(key_chat_outReactionBackgroundHighlight, 0x3fffffff);
         defaultColors.put(key_chat_outReactionText, 0xcc5ba756);
         defaultColors.put(key_chat_outReactionBorder, 0xcc5ba756);
         defaultColors.put(key_chat_inReactionBackground, 0xffebf3fa);

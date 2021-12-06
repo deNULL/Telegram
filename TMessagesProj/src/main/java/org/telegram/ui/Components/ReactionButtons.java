@@ -41,7 +41,7 @@ public class ReactionButtons {
     public final int avatarLeft = 5;
     public final int avatarTop = 2;
     public final int avatarRight = 2;
-    public final int avatarOffset = 8;
+    public final int avatarOffset = 13;
     public final int avatarSize = 22;
 
     public static final int MODE_MICRO = 0; // small static icons (max 2) in the timestamp
@@ -394,7 +394,11 @@ public class ReactionButtons {
 
             // Highlight override
             if (button.reaction.equals(highlightedReaction)) {
-                roundPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+                if (mode == MODE_OUTSIDE) {
+                    roundPaint.setColor(Theme.getColor(Theme.key_chat_outReactionBackgroundHighlight));
+                } else {
+                    roundPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+                }
             }
 
             // Draw background
@@ -422,6 +426,9 @@ public class ReactionButtons {
                 // Draw avatars (starting from back)
                 // TODO: use AvatarsImageView instead
                 for (int j = button.avatars.length - 1; j >= 0; j--) {
+                    ImageReceiver avatar = button.avatars[j];
+                    avatar.draw(canvas);
+
                     roundPaint.setStyle(Paint.Style.STROKE);
                     roundPaint.setStrokeWidth(AndroidUtilities.dp(1.33f));
                     if (mode == MODE_OUTSIDE) {
@@ -432,10 +439,8 @@ public class ReactionButtons {
                     } else {
                         roundPaint.setColor(Theme.getColor(Theme.key_chat_inReactionBackground));
                     }
-                    ImageReceiver avatar = button.avatars[j];
                     RectF rect = new RectF(avatar.getImageX(), avatar.getImageY(), avatar.getImageX() + avatar.getImageWidth(), avatar.getImageY() + avatar.getImageHeight());
                     canvas.drawRoundRect(rect, r, r, roundPaint);
-                    avatar.draw(canvas);
                 }
             } else {
                 // Draw count
