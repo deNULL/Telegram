@@ -127,6 +127,7 @@ public class ReactionButtons {
         public RectF rect;
         public ImageReceiver icon;
         public ImageReceiver[] avatars;
+        public AvatarDrawable[] drawables;
         public boolean isTotal;
 
         public Button(int totalReactions) {
@@ -153,11 +154,15 @@ public class ReactionButtons {
             icon.setImage(ImageLocation.getForDocument(reaction.static_icon), "50_50", null, null, null, 0);
             if (recentUserIds != null) {
                 avatars = new ImageReceiver[recentUserIds.size()];
+                drawables = new AvatarDrawable[recentUserIds.size()];
                 for (int i = 0; i < avatars.length; i++) {
                     TLRPC.User user = MessagesController.getInstance(UserConfig.selectedAccount).getUser(recentUserIds.get(i));
                     avatars[i] = new ImageReceiver(parentView);
-                    avatars[i].setRoundRadius(AndroidUtilities.dp(avatarSize));
-                    avatars[i].setImage(ImageLocation.getForUser(user, ImageLocation.TYPE_SMALL), "50_50", null, null, null, 0);
+                    drawables[i] = new AvatarDrawable();
+                    drawables[i].setTextSize(AndroidUtilities.dp(avatarSize * 0.5f));
+                    avatars[i].setRoundRadius(AndroidUtilities.dp(avatarSize * 0.5f));
+                    avatars[i].setForUserOrChat(user, drawables[i]);
+                    //avatars[i].setImage(ImageLocation.getForUser(user, ImageLocation.TYPE_SMALL), "50_50", null, null, null, 0);
                 }
             }
         }

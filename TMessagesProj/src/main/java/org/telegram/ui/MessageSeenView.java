@@ -400,10 +400,12 @@ public class MessageSeenView extends FrameLayout {
     private void updateAllUsers() {
         allUsers.clear();
         for (TLRPC.User user : reactedUsers) {
-            allUsers.add(user);
+            if (user != null) {
+                allUsers.add(user);
+            }
         }
         for (TLRPC.User user : users) {
-            if (!userReaction.containsKey(user.id)) {
+            if (user != null && !userReaction.containsKey(user.id)) {
                 allUsers.add(user);
             }
         }
