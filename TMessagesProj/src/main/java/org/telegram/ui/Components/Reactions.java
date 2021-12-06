@@ -145,6 +145,7 @@ public class Reactions {
             @Override
             public void dismiss() {
                 super.dismiss();
+                ca.scrimViewReaction = null;
                 buttons.setHighlightedReaction(null);
                 if (ca.scrimPopupWindow != this) {
                     return;
