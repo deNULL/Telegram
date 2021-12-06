@@ -19940,7 +19940,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             popupLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
 
             boolean showMessageSeen = currentChat != null && message.isOutOwner() && message.isSent() && !message.isEditing() && !message.isSending() && !message.isSendError() && !message.isContentUnread() && !message.isUnread() && (ConnectionsManager.getInstance(currentAccount).getCurrentTime() - message.messageOwner.date < 7 * 86400)  && (ChatObject.isMegagroup(currentChat) || !ChatObject.isChannel(currentChat)) && chatInfo != null && chatInfo.participants_count < 100 && !(message.messageOwner.action instanceof TLRPC.TL_messageActionChatJoinedByRequest);
-            if (!showMessageSeen && (message.messageOwner.reactions != null && !message.messageOwner.reactions.results.isEmpty())) {
+            if (!showMessageSeen && (!ChatObject.isChannel(currentChat) || currentChat.megagroup) && (message.messageOwner.reactions != null && !message.messageOwner.reactions.results.isEmpty())) {
                 showMessageSeen = true;
             }
             MessageSeenView messageSeenView = null;

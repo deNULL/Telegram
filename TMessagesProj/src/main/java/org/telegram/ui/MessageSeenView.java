@@ -442,7 +442,11 @@ public class MessageSeenView extends FrameLayout {
             }
         } else
         if (reactedCount > 0) {
-            titleView.setText(LocaleController.formatString("MessageReacted", R.string.MessageReacted, reactedCount, peerIds.size()));
+            if (allUsers.size() > 0) {
+                titleView.setText(LocaleController.formatString("MessageReacted", R.string.MessageReacted, String.format("%d", reactedCount)));
+            } else {
+                titleView.setText(LocaleController.formatString("MessageReacted", R.string.MessageReacted, String.format("%d/%d", reactedCount, peerIds.size())));
+            }
         } else {
             titleView.setText(LocaleController.formatPluralString(isVoice ? "MessagePlayed" : "MessageSeen", peerIds.size()));
         }

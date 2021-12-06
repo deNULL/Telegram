@@ -109,25 +109,31 @@ public class Reactions {
         //backContainer.addView(backItem);
         linearLayout.addView(backItem);
 
-        HorizontalScrollView tabsScrollView = new HorizontalScrollView(ca.contentView.getContext());
-        linearLayout.addView(tabsScrollView, new LinearLayout.LayoutParams(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(39)));
 
-        boolean hasTabs = true;
+        int total = 0;
+        for (TLRPC.TL_reactionCount reactionCount : message.messageOwner.reactions.results) {
+            total += reactionCount.count;
+        }
+        boolean hasTabs = total > 10;
+        if (hasTabs) {
+            HorizontalScrollView tabsScrollView = new HorizontalScrollView(ca.contentView.getContext());
+            linearLayout.addView(tabsScrollView, new LinearLayout.LayoutParams(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(39)));
 
-        ReactionButtons.ButtonsView tabsView = new ReactionButtons.ButtonsView(ca.contentView.getContext());
-        tabsView.buttons.setOptions(ReactionButtons.MODE_INSIDE, false, false, true);
-        tabsView.buttons.setReactions(message.messageOwner.reactions);
-        tabsView.buttons.setMaxWidth(100000);
-        tabsView.buttons.setActiveReaction("-");
-        tabsView.buttons.measure();
-        tabsView.setOnClickListener(new ReactionButtons.OnClickListener() {
-            @Override
-            public void onClick(ReactionButtons.Button button, String reaction, boolean longClick) {
-                tabsView.buttons.setActiveReaction(reaction);
-                messageSeenView.updateFilteredUsers(reaction, true);
-            }
-        });
-        tabsScrollView.addView(tabsView);
+            ReactionButtons.ButtonsView tabsView = new ReactionButtons.ButtonsView(ca.contentView.getContext());
+            tabsView.buttons.setOptions(ReactionButtons.MODE_INSIDE, false, false, true);
+            tabsView.buttons.setReactions(message.messageOwner.reactions);
+            tabsView.buttons.setMaxWidth(100000);
+            tabsView.buttons.setActiveReaction("-");
+            tabsView.buttons.measure();
+            tabsView.setOnClickListener(new ReactionButtons.OnClickListener() {
+                @Override
+                public void onClick(ReactionButtons.Button button, String reaction, boolean longClick) {
+                    tabsView.buttons.setActiveReaction(reaction);
+                    messageSeenView.updateFilteredUsers(reaction, true);
+                }
+            });
+            tabsScrollView.addView(tabsView);
+        }
 
         View dividerView = new View(ca.contentView.getContext());
         dividerView.setBackgroundResource(R.drawable.menu_divider_bg);
