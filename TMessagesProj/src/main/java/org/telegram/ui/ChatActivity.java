@@ -64,14 +64,12 @@ import android.text.style.URLSpan;
 import android.util.Property;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
-import android.util.StateSet;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MotionEvent;
-import android.view.SoundEffectConstants;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -91,7 +89,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.collection.LongSparseArray;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
 import androidx.recyclerview.widget.ChatListItemAnimator;
@@ -3820,7 +3817,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         slidingView = (ChatMessageCell) view;
                         MessageObject message = slidingView.getMessageObject();
                         if (chatMode != 0 || threadMessageObjects != null && threadMessageObjects.contains(message) ||
-                                getMessageType(message) == 1 && (message.getDialogId() == mergeDialogId || message.needDrawBluredPreview()) ||
+                                getMessageActionsType(message) == MSG_SERVICE && (message.getDialogId() == mergeDialogId || message.needDrawBluredPreview()) ||
                                 currentEncryptedChat == null && message.getId() < 0 ||
                                 bottomOverlayChat != null && bottomOverlayChat.getVisibility() == View.VISIBLE ||
                                 currentChat != null && (ChatObject.isNotInChat(currentChat) && !isThreadChat() || ChatObject.isChannel(currentChat) && !ChatObject.canPost(currentChat) && !currentChat.megagroup || !ChatObject.canSendMessages(currentChat)) ||
@@ -12096,48 +12093,63 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         checkAndUpdateAvatar();
     }
 
-    private int getMessageType(MessageObject messageObject) {
+    // This probably should be called something like "message behaviors", not "message type" (see also MessageObject's type)
+    // It mostly affects context menu items, not the appearance.
+    public static final int MSG_NONE = -1;
+    public static final int MSG_SENT_ERROR_MEDIA = 0;
+    public static final int MSG_SERVICE = 1;
+    public static final int MSG_OTHER = 2; // voice? animated emoji? other media? wtf...
+    public static final int MSG_PLAIN = 3;
+    public static final int MSG_SAVEABLE = 4;
+    public static final int MSG_SAVEABLE_TRANSLATION = 5;
+    public static final int MSG_SAVEABLE_IMAGE = 6;
+    public static final int MSG_STICKER_UNKNOWN = 7;
+    public static final int MSG_CONTACT = 8;
+    public static final int MSG_STICKER = 9;
+    public static final int MSG_SAVEABLE_THEME = 10;
+    public static final int MSG_SENT_ERROR = 20;
+    private int getMessageActionsType(MessageObject messageObject) {
         if (messageObject == null) {
-            return -1;
+            return MSG_NONE;
         }
         if (currentEncryptedChat == null) {
             if (messageObject.isEditing()) {
-                return -1;
+                return MSG_NONE;
             } else if (messageObject.getId() <= 0 && messageObject.isOut()) {
                 if (messageObject.isSendError()) {
                     if (!messageObject.isMediaEmpty()) {
-                        return 0;
+                        return MSG_SENT_ERROR_MEDIA;
                     } else {
-                        return 20;
+                        return MSG_SENT_ERROR;
                     }
                 } else {
-                    return -1;
+                    return MSG_NONE;
                 }
             } else {
                 if (messageObject.isAnimatedEmoji()) {
-                    return 2;
+                    return MSG_OTHER;
                 } else if (messageObject.type == 6) {
-                    return -1;
-                } else if (messageObject.type == 10 || messageObject.type == 11) {
+                    return MSG_NONE;
+                } else if (messageObject.type == MessageObject.TYPE_SERVICE || messageObject.type == MessageObject.TYPE_SERVICE_PHOTO) {
                     if (messageObject.getId() == 0) {
-                        return -1;
+                        return MSG_NONE;
                     }
-                    return 1;
+                    return MSG_SERVICE;
                 } else {
                     if (messageObject.isVoice()) {
-                        return 2;
+                        return MSG_OTHER;
                     } else if (messageObject.isSticker() || messageObject.isAnimatedSticker()) {
                         TLRPC.InputStickerSet inputStickerSet = messageObject.getInputStickerSet();
                         if (inputStickerSet instanceof TLRPC.TL_inputStickerSetID) {
                             if (!getMediaDataController().isStickerPackInstalled(inputStickerSet.id)) {
-                                return 7;
+                                return MSG_STICKER_UNKNOWN;
                             }
                         } else if (inputStickerSet instanceof TLRPC.TL_inputStickerSetShortName) {
                             if (!getMediaDataController().isStickerPackInstalled(inputStickerSet.short_name)) {
-                                return 7;
+                                return MSG_STICKER_UNKNOWN;
                             }
                         }
-                        return 9;
+                        return MSG_STICKER;
                     } else if (!messageObject.isRoundVideo() && (messageObject.messageOwner.media instanceof TLRPC.TL_messageMediaPhoto || messageObject.getDocument() != null || messageObject.isMusic() || messageObject.isVideo())) {
                         boolean canSave = false;
                         if (!TextUtils.isEmpty(messageObject.messageOwner.attachPath)) {
@@ -12157,52 +12169,52 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                 String mime = messageObject.getDocument().mime_type;
                                 if (mime != null) {
                                     if (messageObject.getDocumentName().toLowerCase().endsWith("attheme")) {
-                                        return 10;
+                                        return MSG_SAVEABLE_THEME;
                                     } else if (mime.endsWith("/xml")) {
-                                        return 5;
+                                        return MSG_SAVEABLE_TRANSLATION;
                                     } else if (!messageObject.isNewGif() && mime.endsWith("/mp4") || mime.endsWith("/png") || mime.endsWith("/jpg") || mime.endsWith("/jpeg")) {
-                                        return 6;
+                                        return MSG_SAVEABLE_IMAGE;
                                     }
                                 }
                             }
-                            return 4;
+                            return MSG_SAVEABLE;
                         }
-                    } else if (messageObject.type == 12) {
-                        return 8;
+                    } else if (messageObject.type == MessageObject.TYPE_CONTACT) {
+                        return MSG_CONTACT;
                     } else if (messageObject.isMediaEmpty()) {
-                        return 3;
+                        return MSG_PLAIN;
                     }
-                    return 2;
+                    return MSG_OTHER;
                 }
             }
         } else {
             if (messageObject.isSending()) {
-                return -1;
+                return MSG_NONE;
             }
             if (messageObject.isAnimatedEmoji()) {
-                return 2;
+                return MSG_OTHER;
             } else if (messageObject.type == 6) {
-                return -1;
+                return MSG_NONE;
             } else if (messageObject.isSendError()) {
                 if (!messageObject.isMediaEmpty()) {
-                    return 0;
+                    return MSG_SENT_ERROR_MEDIA;
                 } else {
-                    return 20;
+                    return MSG_SENT_ERROR;
                 }
-            } else if (messageObject.type == 10 || messageObject.type == 11) {
+            } else if (messageObject.type == MessageObject.TYPE_SERVICE || messageObject.type == MessageObject.TYPE_SERVICE_PHOTO) {
                 if (messageObject.getId() == 0 || messageObject.isSending()) {
-                    return -1;
+                    return MSG_NONE;
                 } else {
-                    return 1;
+                    return MSG_SERVICE;
                 }
             } else {
                 if (messageObject.isVoice()) {
-                    return 2;
+                    return MSG_OTHER;
                 } else if (!messageObject.isAnimatedEmoji() && (messageObject.isSticker() || messageObject.isAnimatedSticker())) {
                     TLRPC.InputStickerSet inputStickerSet = messageObject.getInputStickerSet();
                     if (inputStickerSet instanceof TLRPC.TL_inputStickerSetShortName) {
                         if (!getMediaDataController().isStickerPackInstalled(inputStickerSet.short_name)) {
-                            return 7;
+                            return MSG_STICKER_UNKNOWN;
                         }
                     }
                 } else if (!messageObject.isRoundVideo() && (messageObject.messageOwner.media instanceof TLRPC.TL_messageMediaPhoto || messageObject.getDocument() != null || messageObject.isMusic() || messageObject.isVideo())) {
@@ -12223,19 +12235,19 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         if (messageObject.getDocument() != null) {
                             String mime = messageObject.getDocument().mime_type;
                             if (mime != null && mime.endsWith("text/xml")) {
-                                return 5;
+                                return MSG_SAVEABLE_TRANSLATION;
                             }
                         }
                         if (messageObject.messageOwner.ttl <= 0) {
-                            return 4;
+                            return MSG_SAVEABLE;
                         }
                     }
-                } else if (messageObject.type == 12) {
-                    return 8;
+                } else if (messageObject.type == MessageObject.TYPE_CONTACT) {
+                    return MSG_CONTACT;
                 } else if (messageObject.isMediaEmpty()) {
-                    return 3;
+                    return MSG_PLAIN;
                 }
-                return 2;
+                return MSG_OTHER;
             }
         }
     }
@@ -12567,9 +12579,9 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             message = ((ChatActionCell) view).getMessageObject();
         }
 
-        int type = getMessageType(message);
+        int actionsType = getMessageActionsType(message);
 
-        if (type < 2 || type == 20) {
+        if (actionsType < MSG_OTHER || actionsType == MSG_SENT_ERROR) {
             return;
         }
         addToSelectedMessages(message, outside);
@@ -19510,7 +19522,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         if (message == null) {
             return;
         }
-        final int type = getMessageType(message);
+        final int actionsType = getMessageActionsType(message);
         if (single) {
             if (message.messageOwner.action instanceof TLRPC.TL_messageActionPinMessage) {
                 if (message.getReplyMsgId() != 0) {
@@ -19630,7 +19642,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             allowEdit = captionsCount < 2;
         }
         if (chatMode == MODE_SCHEDULED || threadMessageObjects != null && threadMessageObjects.contains(message) ||
-                message.isSponsored() || type == 1 && message.getDialogId() == mergeDialogId ||
+                message.isSponsored() || actionsType == MSG_SERVICE && message.getDialogId() == mergeDialogId ||
                 message.messageOwner.action instanceof TLRPC.TL_messageActionSecureValuesSent ||
                 currentEncryptedChat == null && message.getId() < 0 ||
                 bottomOverlayChat != null && bottomOverlayChat.getVisibility() == View.VISIBLE ||
@@ -19638,7 +19650,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             allowChatActions = false;
         }
 
-        if (single || type < 2 || type == 20) {
+        if (single || actionsType < MSG_OTHER || actionsType == MSG_SENT_ERROR) {
             if (getParentActivity() == null) {
                 return;
             }
@@ -19646,11 +19658,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             ArrayList<CharSequence> items = new ArrayList<>();
             final ArrayList<Integer> options = new ArrayList<>();
 
-            if (type >= 0 || type == -1 && single && (message.isSending() || message.isEditing()) && currentEncryptedChat == null) {
+            if (actionsType >= 0 || actionsType == MSG_NONE && single && (message.isSending() || message.isEditing()) && currentEncryptedChat == null) {
                 selectedObject = message;
                 selectedObjectGroup = groupedMessages;
 
-                if (type == -1) {
+                if (actionsType == MSG_NONE) {
                     if (selectedObject.type == 0 || selectedObject.isAnimatedEmoji() || getMessageCaption(selectedObject, selectedObjectGroup) != null) {
                         items.add(LocaleController.getString("Copy", R.string.Copy));
                         options.add(3);
@@ -19659,14 +19671,14 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     items.add(LocaleController.getString("CancelSending", R.string.CancelSending));
                     options.add(24);
                     icons.add(R.drawable.msg_delete);
-                } else if (type == 0) {
+                } else if (actionsType == MSG_SENT_ERROR_MEDIA) {
                     items.add(LocaleController.getString("Retry", R.string.Retry));
                     options.add(0);
                     icons.add(R.drawable.msg_retry);
                     items.add(LocaleController.getString("Delete", R.string.Delete));
                     options.add(1);
                     icons.add(selectedObject.messageOwner.ttl_period != 0 ? R.drawable.msg_delete_auto : R.drawable.msg_delete);
-                } else if (type == 1) {
+                } else if (actionsType == MSG_SERVICE) {
                     if (currentChat != null) {
                         if (allowChatActions) {
                             items.add(LocaleController.getString("Reply", R.string.Reply));
@@ -19709,7 +19721,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         options.add(1);
                         icons.add(selectedObject.messageOwner.ttl_period != 0 ? R.drawable.msg_delete_auto : R.drawable.msg_delete);
                     }
-                } else if (type == 20) {
+                } else if (actionsType == MSG_SENT_ERROR) {
                     items.add(LocaleController.getString("Retry", R.string.Retry));
                     options.add(0);
                     icons.add(R.drawable.msg_retry);
@@ -19761,7 +19773,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                             options.add(22);
                             icons.add(R.drawable.msg_link);
                         }
-                        if (type == 2) {
+                        if (actionsType == MSG_OTHER) {
                             if (chatMode != MODE_SCHEDULED) {
                                 if (selectedObject.type == MessageObject.TYPE_POLL && !message.isPollClosed()) {
                                     if (message.canUnvote()) {
@@ -19790,13 +19802,13 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                     icons.add(R.drawable.msg_download);
                                 }
                             }
-                        } else if (type == 3) {
+                        } else if (actionsType == MSG_PLAIN) {
                             if (selectedObject.messageOwner.media instanceof TLRPC.TL_messageMediaWebPage && MessageObject.isNewGifDocument(selectedObject.messageOwner.media.webpage.document)) {
                                 items.add(LocaleController.getString("SaveToGIFs", R.string.SaveToGIFs));
                                 options.add(11);
                                 icons.add(R.drawable.msg_gif);
                             }
-                        } else if (type == 4) {
+                        } else if (actionsType == MSG_SAVEABLE) {
                             if (selectedObject.isVideo()) {
                                 if (!selectedObject.needDrawBluredPreview()) {
                                     items.add(LocaleController.getString("SaveToGallery", R.string.SaveToGallery));
@@ -19832,7 +19844,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                     icons.add(R.drawable.msg_gallery);
                                 }
                             }
-                        } else if (type == 5) {
+                        } else if (actionsType == MSG_SAVEABLE_TRANSLATION) {
                             items.add(LocaleController.getString("ApplyLocalizationFile", R.string.ApplyLocalizationFile));
                             options.add(5);
                             icons.add(R.drawable.msg_language);
@@ -19842,7 +19854,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                             items.add(LocaleController.getString("ShareFile", R.string.ShareFile));
                             options.add(6);
                             icons.add(R.drawable.msg_shareout);
-                        } else if (type == 10) {
+                        } else if (actionsType == MSG_SAVEABLE_THEME) {
                             items.add(LocaleController.getString("ApplyThemeFile", R.string.ApplyThemeFile));
                             options.add(5);
                             icons.add(R.drawable.msg_theme);
@@ -19852,7 +19864,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                             items.add(LocaleController.getString("ShareFile", R.string.ShareFile));
                             options.add(6);
                             icons.add(R.drawable.msg_shareout);
-                        } else if (type == 6) {
+                        } else if (actionsType == MSG_SAVEABLE_IMAGE) {
                             items.add(LocaleController.getString("SaveToGallery", R.string.SaveToGallery));
                             options.add(7);
                             icons.add(R.drawable.msg_gallery);
@@ -19862,7 +19874,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                             items.add(LocaleController.getString("ShareFile", R.string.ShareFile));
                             options.add(6);
                             icons.add(R.drawable.msg_shareout);
-                        } else if (type == 7) {
+                        } else if (actionsType == MSG_STICKER_UNKNOWN) {
                             if (selectedObject.isMask()) {
                                 items.add(LocaleController.getString("AddToMasks", R.string.AddToMasks));
                                 options.add(9);
@@ -19884,7 +19896,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                     icons.add(R.drawable.msg_unfave);
                                 }
                             }
-                        } else if (type == 8) {
+                        } else if (actionsType == MSG_CONTACT) {
                             TLRPC.User user = getMessagesController().getUser(selectedObject.messageOwner.media.user_id);
                             if (user != null && user.id != getUserConfig().getClientUserId() && getContactsController().contactsDict.get(user.id) == null) {
                                 items.add(LocaleController.getString("AddContactTitle", R.string.AddContactTitle));
@@ -19899,7 +19911,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                 options.add(17);
                                 icons.add(R.drawable.msg_callback);
                             }
-                        } else if (type == 9) {
+                        } else if (actionsType == MSG_STICKER) {
                             TLRPC.Document document = selectedObject.getDocument();
                             if (!getMediaDataController().isStickerInFavorites(document)) {
                                 if (MessageObject.isStickerHasSet(document)) {
@@ -19973,7 +19985,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                             options.add(27);
                             icons.add(R.drawable.msg_viewreplies);
                         }
-                        if (type == 4) {
+                        if (actionsType == MSG_SAVEABLE) {
                             if (selectedObject.isVideo()) {
                                 items.add(LocaleController.getString("SaveToGallery", R.string.SaveToGallery));
                                 options.add(4);
@@ -20000,19 +20012,19 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                                 options.add(4);
                                 icons.add(R.drawable.msg_gallery);
                             }
-                        } else if (type == 5) {
+                        } else if (actionsType == MSG_SAVEABLE_TRANSLATION) {
                             items.add(LocaleController.getString("ApplyLocalizationFile", R.string.ApplyLocalizationFile));
                             options.add(5);
                             icons.add(R.drawable.msg_language);
-                        } else if (type == 10) {
+                        } else if (actionsType == MSG_SAVEABLE_THEME) {
                             items.add(LocaleController.getString("ApplyThemeFile", R.string.ApplyThemeFile));
                             options.add(5);
                             icons.add(R.drawable.msg_theme);
-                        } else if (type == 7) {
+                        } else if (actionsType == MSG_STICKER_UNKNOWN) {
                             items.add(LocaleController.getString("AddToStickers", R.string.AddToStickers));
                             options.add(9);
                             icons.add(R.drawable.msg_sticker);
-                        } else if (type == 8) {
+                        } else if (actionsType == MSG_CONTACT) {
                             TLRPC.User user = getMessagesController().getUser(selectedObject.messageOwner.media.user_id);
                             if (user != null && user.id != getUserConfig().getClientUserId() && getContactsController().contactsDict.get(user.id) == null) {
                                 items.add(LocaleController.getString("AddContactTitle", R.string.AddContactTitle));

@@ -68,12 +68,18 @@ public class MessageObject {
 
     public static final int TYPE_TEXT = 0;
     public static final int TYPE_PHOTO = 1;
-    public static final int TYPE_DOCUMENT = 2;
+    public static final int TYPE_VOICE = 2;
     public static final int TYPE_VIDEO = 3;
     public static final int TYPE_GEO = 4;
     public static final int TYPE_ROUND_VIDEO = 5;
+    // type=6,7?
+    public static final int TYPE_GIF = 8;
+    public static final int TYPE_DOCUMENT = 9;
+    public static final int TYPE_SERVICE = 10;
+    public static final int TYPE_SERVICE_PHOTO = 11; // "Chat updated photo"
     public static final int TYPE_CONTACT = 12;
     public static final int TYPE_STICKER = 13;
+    public static final int TYPE_MUSIC = 14;
     public static final int TYPE_ANIMATED_STICKER = 15;
     public static final int TYPE_PHONE_CALL = 16;
     public static final int TYPE_POLL = 17;
@@ -3081,7 +3087,7 @@ public class MessageObject {
         isRoundVideoCached = 0;
         if (messageOwner instanceof TLRPC.TL_message || messageOwner instanceof TLRPC.TL_messageForwarded_old2) {
             if (isRestrictedMessage) {
-                type = 0;
+                type = TYPE_TEXT;
             } else if (emojiAnimatedSticker != null) {
                 if (isSticker()) {
                     type = TYPE_STICKER;
@@ -3095,7 +3101,7 @@ public class MessageObject {
                 }
             } else if (messageOwner.media.ttl_seconds != 0 && (messageOwner.media.photo instanceof TLRPC.TL_photoEmpty || getDocument() instanceof TLRPC.TL_documentEmpty)) {
                 contentType = 1;
-                type = 10;
+                type = TYPE_SERVICE;
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaDice) {
                 type = TYPE_ANIMATED_STICKER;
                 if (messageOwner.media.document == null) {
@@ -3112,52 +3118,52 @@ public class MessageObject {
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaPhoto) {
                 type = TYPE_PHOTO;
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaGeo || messageOwner.media instanceof TLRPC.TL_messageMediaVenue || messageOwner.media instanceof TLRPC.TL_messageMediaGeoLive) {
-                type = 4;
+                type = TYPE_GEO;
             } else if (isRoundVideo()) {
                 type = TYPE_ROUND_VIDEO;
             } else if (isVideo()) {
                 type = TYPE_VIDEO;
             } else if (isVoice()) {
-                type = 2;
+                type = TYPE_VOICE;
             } else if (isMusic()) {
-                type = 14;
+                type = TYPE_MUSIC;
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaContact) {
-                type = 12;
+                type = TYPE_CONTACT;
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaPoll) {
                 type = TYPE_POLL;
                 checkedVotes = new ArrayList<>();
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaUnsupported) {
-                type = 0;
+                type = TYPE_TEXT;
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaDocument) {
                 TLRPC.Document document = getDocument();
                 if (document != null && document.mime_type != null) {
                     if (isGifDocument(document, hasValidGroupId())) {
-                        type = 8;
+                        type = TYPE_GIF;
                     } else if (isSticker()) {
                         type = TYPE_STICKER;
                     } else if (isAnimatedSticker()) {
                         type = TYPE_ANIMATED_STICKER;
                     } else {
-                        type = 9;
+                        type = TYPE_DOCUMENT;
                     }
                 } else {
-                    type = 9;
+                    type = TYPE_DOCUMENT;
                 }
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaGame) {
-                type = 0;
+                type = TYPE_TEXT;
             } else if (messageOwner.media instanceof TLRPC.TL_messageMediaInvoice) {
-                type = 0;
+                type = TYPE_TEXT;
             }
         } else if (messageOwner instanceof TLRPC.TL_messageService) {
             if (messageOwner.action instanceof TLRPC.TL_messageActionLoginUnknownLocation) {
-                type = 0;
+                type = TYPE_TEXT;
             } else if (messageOwner.action instanceof TLRPC.TL_messageActionChatEditPhoto || messageOwner.action instanceof TLRPC.TL_messageActionUserUpdatedPhoto) {
                 contentType = 1;
-                type = 11;
+                type = TYPE_SERVICE_PHOTO;
             } else if (messageOwner.action instanceof TLRPC.TL_messageEncryptedAction) {
                 if (messageOwner.action.encryptedAction instanceof TLRPC.TL_decryptedMessageActionScreenshotMessages || messageOwner.action.encryptedAction instanceof TLRPC.TL_decryptedMessageActionSetMessageTTL) {
                     contentType = 1;
-                    type = 10;
+                    type = TYPE_SERVICE;
                 } else {
                     contentType = -1;
                     type = -1;
@@ -3166,10 +3172,10 @@ public class MessageObject {
                 contentType = -1;
                 type = -1;
             } else if (messageOwner.action instanceof TLRPC.TL_messageActionPhoneCall) {
-                type = 16;
+                type = TYPE_PHONE_CALL;
             } else {
                 contentType = 1;
-                type = 10;
+                type = TYPE_SERVICE;
             }
         }
         if (oldType != 1000 && oldType != type) {
