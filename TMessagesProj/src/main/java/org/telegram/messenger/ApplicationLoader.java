@@ -156,7 +156,6 @@ public class ApplicationLoader extends Application {
                 MessagesController.getInstance(a).putUser(user, true);
                 SendMessagesHelper.getInstance(a).checkUnsentMessages();
             }
-            ReactionsController.getInstance(a).reloadAvailableReactions();
         }
 
         ApplicationLoader app = (ApplicationLoader) ApplicationLoader.applicationContext;
@@ -169,6 +168,7 @@ public class ApplicationLoader extends Application {
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) { //TODO improve account
             ContactsController.getInstance(a).checkAppAccount();
             DownloadController.getInstance(a);
+            ReactionsController.getInstance(a).reloadAvailableReactions();
         }
         ChatThemeController.init();
     }

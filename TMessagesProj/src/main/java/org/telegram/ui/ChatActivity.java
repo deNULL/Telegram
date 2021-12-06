@@ -217,6 +217,7 @@ import org.telegram.ui.Components.PollVotesAlert;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RadialProgressView;
 import org.telegram.ui.Components.ReactionBubble;
+import org.telegram.ui.Components.ReactionButtons;
 import org.telegram.ui.Components.Reactions;
 import org.telegram.ui.Components.RecyclerAnimationScrollHelper;
 import org.telegram.ui.Components.RecyclerListView;
@@ -260,9 +261,9 @@ import java.util.regex.Pattern;
 @SuppressWarnings("unchecked")
 public class ChatActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, LocationActivity.LocationActivityDelegate, ChatAttachAlertDocumentLayout.DocumentSelectActivityDelegate {
 
-    protected TLRPC.Chat currentChat;
-    protected TLRPC.User currentUser;
-    protected TLRPC.EncryptedChat currentEncryptedChat;
+    public TLRPC.Chat currentChat;
+    public TLRPC.User currentUser;
+    public TLRPC.EncryptedChat currentEncryptedChat;
     private boolean userBlocked;
 
     private long chatInviterId;
@@ -276,7 +277,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private FrameLayout progressView;
     private View progressView2;
     private FrameLayout bottomOverlay;
-    protected ChatActivityEnterView chatActivityEnterView;
+    public ChatActivityEnterView chatActivityEnterView;
     private ChatActivityEnterTopView chatActivityEnterTopView;
     private int chatActivityEnterViewAnimateFromTop;
     private boolean chatActivityEnterViewAnimateBeforeSending;
@@ -293,7 +294,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private ClippingImageView animatingImageView;
     public RecyclerListView chatListView;
     private ChatListItemAnimator chatListItemAnimator;
-    private GridLayoutManagerFixed chatLayoutManager;
+    public GridLayoutManagerFixed chatLayoutManager;
     private ChatActivityAdapter chatAdapter;
     private UnreadCounterTextView bottomOverlayChatText;
     private ImageView bottomOverlayImage;
@@ -318,11 +319,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private StickersAdapter stickersAdapter;
     private FrameLayout stickersPanel;
     private ActionBarMenuSubItem muteItem;
-    private FrameLayout pagedownButton;
+    public FrameLayout pagedownButton;
     private ImageView pagedownButtonImage;
     private boolean pagedownButtonShowedByScroll;
     private CounterView pagedownButtonCounter;
-    private FrameLayout mentiondownButton;
+    public FrameLayout mentiondownButton;
     private SimpleTextView mentiondownButtonCounter;
     private ImageView mentiondownButtonImage;
     private BackupImageView replyImageView;
@@ -407,8 +408,8 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private boolean searchingForUser;
     private TLRPC.User searchingUserMessages;
     private TLRPC.Chat searchingChatMessages;
-    private UndoView undoView;
-    private UndoView topUndoView;
+    public UndoView undoView;
+    public UndoView topUndoView;
     private Bulletin pinBulletin;
     private boolean showPinBulletin;
     private int pinBullerinTag;
@@ -649,14 +650,15 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private Paint aspectPaint;
     private Runnable destroyTextureViewRunnable = this::destroyTextureView;
 
-    private Paint scrimPaint;
-    private View scrimView;
+    public Paint scrimPaint;
+    public View scrimView;
+    public String scrimViewReaction = null;
     private int popupAnimationIndex = -1;
-    private AnimatorSet scrimAnimatorSet;
+    public AnimatorSet scrimAnimatorSet;
     public ActionBarPopupWindow scrimPopupWindow;
     public ActionBarPopupWindow messageSeenUsersPopupWindow;
     public int scrimPopupX, scrimPopupY;
-    private ActionBarMenuSubItem[] scrimPopupWindowItems;
+    public ActionBarMenuSubItem[] scrimPopupWindowItems;
     private ActionBarMenuSubItem menuDeleteItem;
     private Runnable updateDeleteItemRunnable = new Runnable() {
         @Override
@@ -1159,6 +1161,21 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 return false;
             }
             wasManualScroll = true;
+            if (view instanceof ChatMessageCell) {
+                // why there's multiple ways long press can be triggered...
+                ChatMessageCell cell = (ChatMessageCell) view;
+                ReactionButtons.Button button = cell.getReactionButtonAt(x, y);
+                if (button != null) {
+                    float dx = cell.getReactionButtonsX();
+                    float dy = cell.getReactionButtonsY();
+                    x = dx + button.rect.left;
+                    y = dy + button.rect.bottom;
+                    float y1 = dy + button.rect.top;
+                    cell.reactionButtons.pressedButton = null;
+                    Reactions.longPressReaction(ChatActivity.this, cell, cell.reactionButtons, button, x, y, y1);
+                    return true;
+                }
+            }
             if (!actionBar.isActionModeShowed() && reportType < 0) {
                 createMenu(view, false, true, x, y);
             } else {
@@ -2981,10 +2998,16 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                             }
                             canvas.clipRect(viewClipLeft, viewClipTop, viewClipRight, viewClipBottom);
                             canvas.translate(chatListView.getLeft() + child.getX(), chatListView.getY() + child.getY());
-                            if (cell != null && scrimGroup == null && cell.drawBackgroundInParent()) {
+                            if (cell != null && scrimGroup == null && cell.drawBackgroundInParent() && scrimViewReaction == null) {
                                 cell.drawBackgroundInternal(canvas, true);
                             }
+                            if (cell != null && scrimViewReaction != null) {
+                                cell.drawOnlyReaction = scrimViewReaction;
+                            }
                             child.draw(canvas);
+                            if (cell != null && scrimViewReaction != null) {
+                                cell.drawOnlyReaction = null;
+                            }
                             canvas.restore();
 
                             if (cell != null) {
@@ -3033,13 +3056,13 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         drawCaptionAfter.clear();
                     }
 
-                    if (pagedownButton != null && pagedownButton.getTag() != null) {
+                    if (pagedownButton != null && pagedownButton.getTag() != null && scrimViewReaction == null) {
                         super.drawChild(canvas, pagedownButton, SystemClock.uptimeMillis());
                     }
-                    if (mentiondownButton != null && mentiondownButton.getTag() != null) {
+                    if (mentiondownButton != null && mentiondownButton.getTag() != null && scrimViewReaction == null) {
                         super.drawChild(canvas, mentiondownButton, SystemClock.uptimeMillis());
                     }
-                    if (floatingDateView != null && floatingDateView.getTag() != null) {
+                    if (floatingDateView != null && floatingDateView.getTag() != null && scrimViewReaction == null) {
                         super.drawChild(canvas, floatingDateView, SystemClock.uptimeMillis());
                     }
                     if (fireworksOverlay != null) {
@@ -4318,7 +4341,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             public boolean drawChild(Canvas canvas, View child, long drawingTime) {
                 int clipLeft = 0;
                 int clipBottom = 0;
-                boolean skipDraw = child == scrimView;
+                boolean skipDraw = child == scrimView && scrimViewReaction == null;
                 ChatMessageCell cell;
                 float cilpTop = chatListViewPaddingTop - chatListViewPaddingVisibleOffset - AndroidUtilities.dp(4);
 
@@ -9381,7 +9404,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         return false;
     }
 
-    private void hideHints(boolean scroll) {
+    public void hideHints(boolean scroll) {
         if (!scroll) {
             if (slowModeHint != null) {
                 slowModeHint.hide();
@@ -19458,7 +19481,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         if (v instanceof ChatMessageCell) {
             message = ((ChatMessageCell) v).getMessageObject();
         }
-        if (message == null || (currentUser == null && (chatInfo == null || chatInfo.available_reactions.isEmpty()))) {
+        if (!single || message == null || message.isSponsored() || (currentUser == null && (chatInfo == null || chatInfo.available_reactions.isEmpty()))) {
             createMenuInternal(v, single, listView, x, y, searchGroup);
             return;
         }
@@ -19646,7 +19669,10 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 message.messageOwner.action instanceof TLRPC.TL_messageActionSecureValuesSent ||
                 currentEncryptedChat == null && message.getId() < 0 ||
                 bottomOverlayChat != null && bottomOverlayChat.getVisibility() == View.VISIBLE ||
-                currentChat != null && (ChatObject.isNotInChat(currentChat) && !isThreadChat() || ChatObject.isChannel(currentChat) && !ChatObject.canPost(currentChat) && !currentChat.megagroup || !ChatObject.canSendMessages(currentChat))) {
+                currentChat != null && (
+                        ChatObject.isNotInChat(currentChat) && !isThreadChat() || ChatObject.isChannel(currentChat) &&
+                        !ChatObject.canPost(currentChat) && !currentChat.megagroup || !ChatObject.canSendMessages(currentChat)
+                )) {
             allowChatActions = false;
         }
 
@@ -20279,7 +20305,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             scrimPopupWindow.setPauseNotifications(true);
             scrimPopupWindow.setDismissAnimationDuration(220);
             scrimPopupWindow.setOutsideTouchable(true);
-            //scrimPopupWindow.setClippingEnabled(true);
+            scrimPopupWindow.setClippingEnabled(true);
             scrimPopupWindow.setAnimationStyle(R.style.PopupContextAnimation);
             scrimPopupWindow.setFocusable(true);
             scrimPopupContainerLayout.measure(View.MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(1000), View.MeasureSpec.AT_MOST), View.MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(1000), View.MeasureSpec.AT_MOST));
@@ -22984,6 +23010,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     public void didLongPress(ChatMessageCell cell, float x, float y) {
                         createMenu(cell, false, false, x, y);
                         startMultiselect(chatListView.getChildAdapterPosition(cell));
+                    }
+
+                    @Override
+                    public void didLongPressReaction(ChatMessageCell cell, ReactionButtons buttons, ReactionButtons.Button button, float x, float y, float y1) {
+                        Reactions.longPressReaction(ChatActivity.this, cell, buttons, button, x, y, y1);
                     }
 
                     @Override

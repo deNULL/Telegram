@@ -55,13 +55,13 @@ public abstract class BaseFragment {
     private boolean isFinished;
     private boolean finishing;
     protected Dialog visibleDialog;
-    protected int currentAccount = UserConfig.selectedAccount;
+    public int currentAccount = UserConfig.selectedAccount;
 
-    protected View fragmentView;
+    public View fragmentView;
     protected ActionBarLayout parentLayout;
     protected ActionBar actionBar;
     protected boolean inPreviewMode;
-    protected boolean inBubbleMode;
+    public boolean inBubbleMode;
     protected int classGuid;
     protected Bundle arguments;
     protected boolean hasOwnBackground = false;

@@ -187,6 +187,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         default void didLongPress(ChatMessageCell cell, float x, float y) {
         }
 
+        default void didLongPressReaction(ChatMessageCell cell, ReactionButtons buttons, ReactionButtons.Button button, float x, float y, float y1) {
+        }
+
         default void didPressReplyMessage(ChatMessageCell cell, int id) {
         }
 
@@ -678,13 +681,14 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private Rect commentButtonRect = new Rect();
     private boolean commentButtonPressed;
 
-    private ReactionButtons reactionButtons;
+    public ReactionButtons reactionButtons;
     private int reactionsInnerHeight;
     private int reactionsOuterHeight;
     private int reactionsTimeWidth;
     private int reactionsLeft; // Left padding
     private int reactionsInnerInset; // Offset from bg left + right
     private int reactionsBottom; // Offset from the bottom up
+    public String drawOnlyReaction = null;
 
     private ImageReceiver avatarImage;
     private AvatarDrawable avatarDrawable;
@@ -6324,6 +6328,18 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 }
             }
 
+            if (!handled && reactionButtons != null && reactionButtons.pressedButton != null) {
+                float dx = getReactionButtonsX();
+                float dy = getReactionButtonsY();
+                ReactionButtons.Button button = reactionButtons.pressedButton;
+                float x = dx + button.rect.left;
+                float y = dy + button.rect.bottom;
+                float minY = dy + button.rect.top;
+                delegate.didLongPressReaction(this, reactionButtons, button, x, y, minY);
+                reactionButtons.pressedButton = null;
+                handled = true;
+            }
+
             if (!handled) {
                 delegate.didLongPress(this, lastTouchX, lastTouchY);
             }
@@ -10297,6 +10313,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     @SuppressLint("WrongCall")
     @Override
     protected void onDraw(Canvas canvas) {
+        if (drawOnlyReaction != null) {
+            drawReactionButtons(canvas);
+            return;
+        }
+
         if (currentMessageObject == null) {
             return;
         }
@@ -15149,37 +15170,33 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             return false; // too small to process touches
         }
 
-        // TODO: reuse code from drawing
-        float dx = 0;
-        float dy = 0;
-        if (reactionButtons.mode == ReactionButtons.MODE_INSIDE) {
-            dx = getCurrentBackgroundLeft() + reactionsLeft;
-            dy = totalHeight - reactionsBottom;
-        } else {
-            int addX;
-            if (currentMessageObject.isOutOwner()) {
-                addX = getMeasuredWidth() - widthForButtons - AndroidUtilities.dp(10);
-            } else {
-                addX = backgroundDrawableLeft + AndroidUtilities.dp(mediaBackground || drawPinnedBottom ? 1 : 7);
-            }
-
-            // Place below inline buttons?
-            dx = addX;
-            dy = totalHeight + keyboardHeight + AndroidUtilities.dp(4);
-        }
-
+        float dx = getReactionButtonsX();
+        float dy = getReactionButtonsY();
         return reactionButtons.onTouch(event.getAction(), event.getX() - dx, event.getY() - dy, event.getEventTime() - event.getDownTime());
+    }
+
+    public ReactionButtons.Button getReactionButtonAt(float x, float y) {
+        if (reactionButtons.mode == MODE_MICRO || reactionButtons.buttons.isEmpty()) {
+            return null;
+        }
+        float dx = getReactionButtonsX();
+        float dy = getReactionButtonsY();
+        return reactionButtons.getButtonAt(x - dx, y - dy);
     }
 
     private void drawReactionButtons(Canvas canvas) {
         canvas.save();
+        canvas.translate(getReactionButtonsX(), getReactionButtonsY());
+        reactionButtons.draw(canvas, drawOnlyReaction);
+        canvas.restore();
+    }
+
+    public float getReactionButtonsX() {
         if (reactionButtons.mode == MODE_MICRO) {
-            int timeYOffset = -(drawCommentButton ? AndroidUtilities.dp(41.3f) : 0);
-            float timeY = shouldDrawTimeOnMedia() ? photoImage.getImageY2() + additionalTimeOffsetY - AndroidUtilities.dp(9.0f) : layoutHeight - AndroidUtilities.dp(pinnedBottom || pinnedTop ? 9.5f : 8.5f) + timeYOffset;
-            canvas.translate(timeX, timeY - AndroidUtilities.dp(13));
+            return timeX;
         } else
         if (reactionButtons.mode == ReactionButtons.MODE_INSIDE) {
-            canvas.translate(getCurrentBackgroundLeft() + reactionsLeft, totalHeight - reactionsBottom);
+            return getCurrentBackgroundLeft() + reactionsLeft;
         } else {
             int addX;
             if (currentMessageObject.isOutOwner()) {
@@ -15187,11 +15204,21 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else {
                 addX = backgroundDrawableLeft + AndroidUtilities.dp(mediaBackground || drawPinnedBottom ? 1 : 7);
             }
-
-            // Place below inline buttons?
-            canvas.translate(addX, totalHeight + keyboardHeight + AndroidUtilities.dp(4));
+            return addX;
         }
-        reactionButtons.draw(canvas);
-        canvas.restore();
+    }
+
+    public float getReactionButtonsY() {
+        if (reactionButtons.mode == MODE_MICRO) {
+            int timeYOffset = -(drawCommentButton ? AndroidUtilities.dp(41.3f) : 0);
+            float timeY = shouldDrawTimeOnMedia() ? photoImage.getImageY2() + additionalTimeOffsetY - AndroidUtilities.dp(9.0f) : layoutHeight - AndroidUtilities.dp(pinnedBottom || pinnedTop ? 9.5f : 8.5f) + timeYOffset;
+            return timeY - AndroidUtilities.dp(13);
+        } else
+        if (reactionButtons.mode == ReactionButtons.MODE_INSIDE) {
+            return totalHeight - reactionsBottom;
+        } else {
+            // Place below inline buttons?
+            return totalHeight + keyboardHeight + AndroidUtilities.dp(4);
+        }
     }
 }

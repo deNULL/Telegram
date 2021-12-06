@@ -67,7 +67,7 @@ public class ReactionButtons {
     public View parentView;
 
     private ReactionButtons.OnClickListener listener = null;
-    private Button pressedButton = null;
+    public Button pressedButton = null;
 
     public interface OnClickListener {
         void onClick(Button button, String reaction, boolean longClick);
@@ -358,8 +358,15 @@ public class ReactionButtons {
     }
 
     public void draw(Canvas canvas) {
+        draw(canvas, null);
+    }
+
+    public void draw(Canvas canvas, String singleReaction) {
         if (mode == MODE_MICRO) {
             for (Button button : buttons) {
+                if (singleReaction != null && !singleReaction.equals(button.reaction)) {
+                    continue;
+                }
                 button.icon.draw(canvas);
             }
             return;
@@ -368,6 +375,9 @@ public class ReactionButtons {
         float r = AndroidUtilities.dp(12);
         for (int i = 0; i < buttons.size(); i++) {
             Button button = buttons.get(i);
+            if (singleReaction != null && !singleReaction.equals(button.reaction)) {
+                continue;
+            }
 
             roundPaint.setStyle(Paint.Style.FILL);
             if (mode == MODE_OUTSIDE) {

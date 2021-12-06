@@ -80,10 +80,15 @@ public class MessageSeenView extends FrameLayout {
     boolean loadingNext;
 
     public MessageSeenView(@NonNull Context context, int currentAccount, MessageObject messageObject, TLRPC.Chat chat) {
+        this(context, currentAccount, messageObject, chat, null);
+    }
+
+    public MessageSeenView(@NonNull Context context, int currentAccount, MessageObject messageObject, TLRPC.Chat chat, String reactionFilter) {
         super(context);
         this.currentAccount = currentAccount;
         this.dialogId = messageObject.getDialogId();
         this.messageId = messageObject.getId();
+        this.currentReactionFilter = reactionFilter;
         isVoice = (messageObject.isRoundVideo() || messageObject.isVoice());
         flickerLoadingView = new FlickerLoadingView(context);
         flickerLoadingView.setColors(Theme.key_actionBarDefaultSubmenuBackground, Theme.key_listSelector, null);
@@ -135,6 +140,10 @@ public class MessageSeenView extends FrameLayout {
         rreq.id = messageObject.getId();
         rreq.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
         rreq.limit = 100;
+        if (reactionFilter != null && !reactionFilter.equals("-")) {
+            rreq.flags |= 1;
+            rreq.reaction = reactionFilter;
+        }
         ConnectionsManager.getInstance(currentAccount).sendRequest(rreq, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
             FileLog.e("MessageSeenView reactions request completed");
             if (error != null) {
@@ -165,86 +174,87 @@ public class MessageSeenView extends FrameLayout {
             updateView();
         }));
 
-
-        TLRPC.TL_messages_getMessageReadParticipants req = new TLRPC.TL_messages_getMessageReadParticipants();
-        req.msg_id = messageObject.getId();
-        req.peer = MessagesController.getInstance(currentAccount).getInputPeer(messageObject.getDialogId());
-        ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
-            FileLog.e("MessageSeenView request completed");
-            if (error != null) {
-                updateView();
-                return;
-            }
-            TLRPC.Vector vector = (TLRPC.Vector) response;
-            ArrayList<Long> unknownUsers = new ArrayList<>();
-            HashMap<Long, TLRPC.User> usersLocal = new HashMap<>();
-            ArrayList<Long> allPeers = new ArrayList<>();
-            for (int i = 0, n = vector.objects.size(); i < n; i++) {
-                Object object = vector.objects.get(i);
-                if (object instanceof Long) {
-                    Long peerId = (Long) object;
-                    if (finalFromId == peerId) {
-                        continue;
-                    }
-                    TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(peerId);
-                    allPeers.add(peerId);
-                    if (true || user == null) {
-                        unknownUsers.add(peerId);
-                    } else {
-                        usersLocal.put(peerId, user);
-                    }
+        if (currentReactionFilter == null) {
+            TLRPC.TL_messages_getMessageReadParticipants req = new TLRPC.TL_messages_getMessageReadParticipants();
+            req.msg_id = messageObject.getId();
+            req.peer = MessagesController.getInstance(currentAccount).getInputPeer(messageObject.getDialogId());
+            ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                FileLog.e("MessageSeenView request completed");
+                if (error != null) {
+                    updateView();
+                    return;
                 }
-            }
-
-            if (unknownUsers.isEmpty()) {
-                for (int i = 0; i < allPeers.size(); i++) {
-                    peerIds.add(allPeers.get(i));
-                    users.add(usersLocal.get(allPeers.get(i)));
-                }
-                updateView();
-            } else {
-                if (ChatObject.isChannel(chat)) {
-                    TLRPC.TL_channels_getParticipants usersReq = new TLRPC.TL_channels_getParticipants();
-                    usersReq.limit = 50;
-                    usersReq.offset = 0;
-                    usersReq.filter = new TLRPC.TL_channelParticipantsRecent();
-                    usersReq.channel = MessagesController.getInstance(currentAccount).getInputChannel(chat.id);
-                    ConnectionsManager.getInstance(currentAccount).sendRequest(usersReq, (response1, error1) -> AndroidUtilities.runOnUIThread(() -> {
-                        if (response1 != null) {
-                            TLRPC.TL_channels_channelParticipants users = (TLRPC.TL_channels_channelParticipants) response1;
-                            for (int i = 0; i < users.users.size(); i++) {
-                                TLRPC.User user = users.users.get(i);
-                                MessagesController.getInstance(currentAccount).putUser(user, false);
-                                usersLocal.put(user.id, user);
-                            }
-                            for (int i = 0; i < allPeers.size(); i++) {
-                                peerIds.add(allPeers.get(i));
-                                this.users.add(usersLocal.get(allPeers.get(i)));
-                            }
+                TLRPC.Vector vector = (TLRPC.Vector) response;
+                ArrayList<Long> unknownUsers = new ArrayList<>();
+                HashMap<Long, TLRPC.User> usersLocal = new HashMap<>();
+                ArrayList<Long> allPeers = new ArrayList<>();
+                for (int i = 0, n = vector.objects.size(); i < n; i++) {
+                    Object object = vector.objects.get(i);
+                    if (object instanceof Long) {
+                        Long peerId = (Long) object;
+                        if (finalFromId == peerId) {
+                            continue;
                         }
-                        updateView();
-                    }));
+                        TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(peerId);
+                        allPeers.add(peerId);
+                        if (true || user == null) {
+                            unknownUsers.add(peerId);
+                        } else {
+                            usersLocal.put(peerId, user);
+                        }
+                    }
+                }
+
+                if (unknownUsers.isEmpty()) {
+                    for (int i = 0; i < allPeers.size(); i++) {
+                        peerIds.add(allPeers.get(i));
+                        users.add(usersLocal.get(allPeers.get(i)));
+                    }
+                    updateView();
                 } else {
-                    TLRPC.TL_messages_getFullChat usersReq = new TLRPC.TL_messages_getFullChat();
-                    usersReq.chat_id = chat.id;
-                    ConnectionsManager.getInstance(currentAccount).sendRequest(usersReq, (response1, error1) -> AndroidUtilities.runOnUIThread(() -> {
-                        if (response1 != null) {
-                            TLRPC.TL_messages_chatFull chatFull = (TLRPC.TL_messages_chatFull) response1;
-                            for (int i = 0; i < chatFull.users.size(); i++) {
-                                TLRPC.User user = chatFull.users.get(i);
-                                MessagesController.getInstance(currentAccount).putUser(user, false);
-                                usersLocal.put(user.id, user);
+                    if (ChatObject.isChannel(chat)) {
+                        TLRPC.TL_channels_getParticipants usersReq = new TLRPC.TL_channels_getParticipants();
+                        usersReq.limit = 50;
+                        usersReq.offset = 0;
+                        usersReq.filter = new TLRPC.TL_channelParticipantsRecent();
+                        usersReq.channel = MessagesController.getInstance(currentAccount).getInputChannel(chat.id);
+                        ConnectionsManager.getInstance(currentAccount).sendRequest(usersReq, (response1, error1) -> AndroidUtilities.runOnUIThread(() -> {
+                            if (response1 != null) {
+                                TLRPC.TL_channels_channelParticipants users = (TLRPC.TL_channels_channelParticipants) response1;
+                                for (int i = 0; i < users.users.size(); i++) {
+                                    TLRPC.User user = users.users.get(i);
+                                    MessagesController.getInstance(currentAccount).putUser(user, false);
+                                    usersLocal.put(user.id, user);
+                                }
+                                for (int i = 0; i < allPeers.size(); i++) {
+                                    peerIds.add(allPeers.get(i));
+                                    this.users.add(usersLocal.get(allPeers.get(i)));
+                                }
                             }
-                            for (int i = 0; i < allPeers.size(); i++) {
-                                peerIds.add(allPeers.get(i));
-                                this.users.add(usersLocal.get(allPeers.get(i)));
+                            updateView();
+                        }));
+                    } else {
+                        TLRPC.TL_messages_getFullChat usersReq = new TLRPC.TL_messages_getFullChat();
+                        usersReq.chat_id = chat.id;
+                        ConnectionsManager.getInstance(currentAccount).sendRequest(usersReq, (response1, error1) -> AndroidUtilities.runOnUIThread(() -> {
+                            if (response1 != null) {
+                                TLRPC.TL_messages_chatFull chatFull = (TLRPC.TL_messages_chatFull) response1;
+                                for (int i = 0; i < chatFull.users.size(); i++) {
+                                    TLRPC.User user = chatFull.users.get(i);
+                                    MessagesController.getInstance(currentAccount).putUser(user, false);
+                                    usersLocal.put(user.id, user);
+                                }
+                                for (int i = 0; i < allPeers.size(); i++) {
+                                    peerIds.add(allPeers.get(i));
+                                    this.users.add(usersLocal.get(allPeers.get(i)));
+                                }
                             }
-                        }
-                        updateView();
-                    }));
+                            updateView();
+                        }));
+                    }
                 }
-            }
-        }));
+            }));
+        }
         setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector), AndroidUtilities.dp(4), AndroidUtilities.dp(4)));
         setEnabled(false);
     }
