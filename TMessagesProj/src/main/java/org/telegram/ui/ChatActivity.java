@@ -64,14 +64,17 @@ import android.text.style.URLSpan;
 import android.util.Property;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
+import android.util.StateSet;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MotionEvent;
+import android.view.SoundEffectConstants;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewTreeObserver;
@@ -250,6 +253,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -19378,7 +19382,63 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         return caption;
     }
 
+
+    private Runnable delayedMenuClick = null;
+
     private void createMenu(View v, boolean single, boolean listView, float x, float y, boolean searchGroup) {
+        MessageObject message = null;
+        if (v instanceof ChatMessageCell) {
+            message = ((ChatMessageCell) v).getMessageObject();
+        }
+        if (message == null || (currentUser == null && (chatInfo == null || chatInfo.available_reactions.isEmpty()))) {
+            createMenuInternal(v, single, listView, x, y, searchGroup);
+            return;
+        }
+        String reaction = "❤";
+        HashSet<String> available = new HashSet<>();
+        if (message.messageOwner.reactions != null) {
+            for (TLRPC.TL_reactionCount r : message.messageOwner.reactions.results) {
+                available.add(r.reaction); // we can join reaction even if it's disabled
+                if (r.chosen) {
+                    reaction = null;
+                    break;
+                }
+            }
+        }
+
+        if (reaction != null) {
+            if (currentUser == null && chatInfo != null) {
+                for (String r : chatInfo.available_reactions) {
+                    available.add(r);
+                }
+                if (!available.contains(reaction)) {
+                    reaction = "\uD83D\uDC4D";
+                    if (!available.contains(reaction)) {
+                        createMenuInternal(v, single, listView, x, y, searchGroup);
+                        return;
+                    }
+                }
+            }
+        }
+
+        if (delayedMenuClick != null) {
+            // Double-click: send reaction
+            contentView.removeCallbacks(delayedMenuClick);
+            delayedMenuClick = null;
+            Reactions.sendReaction(this, currentAccount, message, reaction, 0, 0);
+            return;
+        }
+        delayedMenuClick = new Runnable() {
+            @Override
+            public void run() {
+                delayedMenuClick = null;
+                createMenuInternal(v, single, listView, x, y, searchGroup);
+            }
+        };
+        contentView.postDelayed(delayedMenuClick, ViewConfiguration.getDoubleTapTimeout());
+    }
+
+    private void createMenuInternal(View v, boolean single, boolean listView, float x, float y, boolean searchGroup) {
         if (actionBar.isActionModeShowed() || reportType >= 0) {
             return;
         }
