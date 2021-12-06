@@ -32,6 +32,8 @@ import org.telegram.ui.ChatActivity;
 import org.telegram.ui.MessageSeenView;
 import org.telegram.ui.ProfileActivity;
 
+import java.util.HashMap;
+
 public class Reactions {
     // This is just static utils to reduce the amount of garbage in ChatActivity and other classes
 

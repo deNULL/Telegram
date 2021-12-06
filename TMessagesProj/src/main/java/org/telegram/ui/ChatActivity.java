@@ -18885,6 +18885,61 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             pullingDownOffset = 0;
             chatListView.invalidate();
         }
+
+        startUpdatingMessagesReactions();
+    }
+
+    private Runnable messagesReactionsUpdater = null;
+    private void startUpdatingMessagesReactions() {
+        if (contentView == null) {
+            return;
+        }
+        if (messagesReactionsUpdater != null) {
+            contentView.removeCallbacks(messagesReactionsUpdater);
+        }
+        messagesReactionsUpdater = new Runnable() {
+            @Override
+            public void run() {
+                if (chatListView == null) {
+                    return;
+                }
+                int count = chatListView.getChildCount();
+                ArrayList<Integer> ids = new ArrayList<>();
+                for (int i = 0; i < count; i++) {
+                    View view = chatListView.getChildAt(i);
+                    if (view instanceof ChatMessageCell) {
+                        ChatMessageCell cell = (ChatMessageCell) view;
+                        MessageObject messageObject = cell.getMessageObject();
+                        ids.add(messageObject.messageOwner.id);
+                    }
+                }
+
+                if (ids.isEmpty() || currentChat == null) {
+                    contentView.postDelayed(messagesReactionsUpdater, 15000);
+                } else {
+                    TLRPC.TL_messages_getMessagesReactions req = new TLRPC.TL_messages_getMessagesReactions();
+                    req.peer = MessagesController.getInstance(currentAccount).getInputPeer(currentChat.id);
+                    req.id = ids;
+                    ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                        if (error != null) {
+                            return;
+                        }
+                        MessagesController.getInstance(currentAccount).processUpdates((TLRPC.Updates) response, false);
+                        if (messagesReactionsUpdater != null && contentView != null) {
+                            contentView.postDelayed(messagesReactionsUpdater, 15000);
+                        }
+                    }));
+                }
+            }
+        };
+        messagesReactionsUpdater.run();
+    }
+    private void stopUpdatingMessagesReactions() {
+        if (contentView == null || messagesReactionsUpdater == null) {
+            return;
+        }
+        contentView.removeCallbacks(messagesReactionsUpdater);
+        messagesReactionsUpdater = null;
     }
 
     public void checkAdjustResize() {
@@ -18907,6 +18962,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     @Override
     public void onPause() {
         super.onPause();
+        stopUpdatingMessagesReactions();
         if (scrimPopupWindow != null) {
             scrimPopupWindow.setPauseNotifications(false);
             scrimPopupWindow.dismiss();
