@@ -105,7 +105,6 @@ public class Reactions {
         });
         linearLayout.setOrientation(LinearLayout.VERTICAL);
         RecyclerListView listView = messageSeenView.createListView();
-        int listViewTotalHeight = AndroidUtilities.dp(8) + AndroidUtilities.dp(44) * listView.getAdapter().getItemCount();
 
         //backContainer.addView(backItem);
         linearLayout.addView(backItem);
@@ -113,31 +112,34 @@ public class Reactions {
         HorizontalScrollView tabsScrollView = new HorizontalScrollView(ca.contentView.getContext());
         linearLayout.addView(tabsScrollView, new LinearLayout.LayoutParams(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(39)));
 
+        boolean hasTabs = true;
+
         ReactionButtons.ButtonsView tabsView = new ReactionButtons.ButtonsView(ca.contentView.getContext());
         tabsView.buttons.setOptions(ReactionButtons.MODE_INSIDE, false, false, true);
         tabsView.buttons.setReactions(message.messageOwner.reactions);
         tabsView.buttons.setMaxWidth(100000);
+        tabsView.buttons.setActiveReaction("-");
         tabsView.buttons.measure();
+        tabsView.setOnClickListener(new ReactionButtons.OnClickListener() {
+            @Override
+            public void onClick(ReactionButtons.Button button, String reaction, boolean longClick) {
+                tabsView.buttons.setActiveReaction(reaction);
+                messageSeenView.updateFilteredUsers(reaction, true);
+            }
+        });
         tabsScrollView.addView(tabsView);
 
         View dividerView = new View(ca.contentView.getContext());
         dividerView.setBackgroundResource(R.drawable.menu_divider_bg);
-        dividerView.setMinimumHeight(AndroidUtilities.dp(8));
-        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(8));
+        dividerView.setMinimumHeight(AndroidUtilities.dp(hasTabs ? 1 : 8));
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(hasTabs ? 1 : 8));
         dividerView.setLayoutParams(layoutParams);
         linearLayout.addView(dividerView);
 
         linearLayout.addView(listView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 320, 0, 0, 0, 0));
 
-        if (listViewTotalHeight > availableHeight) {
-            if (availableHeight > AndroidUtilities.dp(620)) {
-                listView.getLayoutParams().height = AndroidUtilities.dp(620);
-            } else {
-                listView.getLayoutParams().height = availableHeight;
-            }
-        } else {
-            listView.getLayoutParams().height = listViewTotalHeight;
-        }
+        messageSeenView.availableHeight = availableHeight;
+        messageSeenView.updateListViewHeight();
 
         Drawable shadowDrawable3 = ContextCompat.getDrawable(ca.contentView.getContext(), R.drawable.popup_fixed_alert).mutate();
         shadowDrawable3.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground), PorterDuff.Mode.MULTIPLY));
@@ -195,7 +197,7 @@ public class Reactions {
         });
 
         listView.setOnItemClickListener((view1, position) -> {
-            TLRPC.User user = messageSeenView.allUsers.get(position);
+            TLRPC.User user = messageSeenView.filteredUsers.get(position);
             if (user == null) {
                 return;
             }

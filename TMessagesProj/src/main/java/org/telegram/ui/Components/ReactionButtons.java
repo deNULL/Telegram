@@ -5,8 +5,9 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
-import android.text.TextPaint;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ImageLocation;
@@ -65,8 +66,21 @@ public class ReactionButtons {
 
     public View parentView;
 
+    private ReactionButtons.OnClickListener listener = null;
+    private Button pressedButton = null;
+
+    public interface OnClickListener {
+        void onClick(Button button, String reaction, boolean longClick);
+    }
+
     public static class ButtonsView extends View {
+        public static final int paddingLeft = 10;
+        public static final int paddingRight = 10;
+        public static final int paddingTop = 2;
+        public static final int paddingBottom = 10;
         public ReactionButtons buttons;
+        private ReactionButtons.OnClickListener listener = null;
+        private Button pressedButton = null;
 
         public ButtonsView(Context context) {
             super(context);
@@ -76,14 +90,34 @@ public class ReactionButtons {
         @Override
         protected void onDraw(Canvas canvas) {
             canvas.save();
-            canvas.translate(AndroidUtilities.dp(10), AndroidUtilities.dp(2));
+            canvas.translate(AndroidUtilities.dp(paddingLeft), AndroidUtilities.dp(paddingTop));
             buttons.draw(canvas);
             canvas.restore();
         }
 
         @Override
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            setMeasuredDimension(buttons.width + AndroidUtilities.dp(20), buttons.height + AndroidUtilities.dp(12));
+            setMeasuredDimension(buttons.width + AndroidUtilities.dp(paddingLeft + paddingRight), buttons.height + AndroidUtilities.dp(paddingTop + paddingBottom));
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                pressedButton = buttons.getButtonAt(event, paddingLeft, paddingTop);
+                return pressedButton != null;
+            } else
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                if (pressedButton != null && listener != null) {
+                    listener.onClick(pressedButton, pressedButton.reaction, event.getEventTime() - event.getDownTime() > ViewConfiguration.getLongPressTimeout());
+                    return true;
+                }
+                pressedButton = null;
+            }
+            return false;
+        }
+
+        public void setOnClickListener(ReactionButtons.OnClickListener listener) {
+            this.listener = listener;
         }
     }
 
@@ -226,8 +260,14 @@ public class ReactionButtons {
         this.isTabs = isTabs;
     }
 
+    public void setActiveReaction(String activeReaction) {
+        this.activeReaction = activeReaction;
+        parentView.invalidate();
+    }
+
     public void setHighlightedReaction(String highlightedReaction) {
         this.highlightedReaction = highlightedReaction;
+        parentView.invalidate();
     }
 
     public void measure() {
@@ -280,9 +320,36 @@ public class ReactionButtons {
         return !buttons.isEmpty() && mode == MODE_OUTSIDE ? height + AndroidUtilities.dp(8) : 0;
     }
 
-    public boolean onTouch(int action, float x, float y) {
+    public void setOnClickListener(ReactionButtons.OnClickListener listener) {
+        this.listener = listener;
+    }
 
-        return true;
+    public boolean onTouch(int action, float x, float y, int time) {
+        if (action == MotionEvent.ACTION_DOWN) {
+            pressedButton = getButtonAt(x, y);
+            return pressedButton != null;
+        } else
+        if (action == MotionEvent.ACTION_UP) {
+            if (pressedButton != null && listener != null) {
+                listener.onClick(pressedButton, pressedButton.reaction, time > ViewConfiguration.getLongPressTimeout());
+                return true;
+            }
+            pressedButton = null;
+        }
+        return false;
+    }
+
+    public Button getButtonAt(MotionEvent event, float dx, float dy) {
+        return getButtonAt(event.getX() - AndroidUtilities.dp(dx), event.getY() - AndroidUtilities.dp(dy));
+    }
+
+    public Button getButtonAt(float x, float y) {
+        for (Button button : buttons) {
+            if (button.rect.contains(x, y)) {
+                return button;
+            }
+        }
+        return null;
     }
 
     public void draw(Canvas canvas) {

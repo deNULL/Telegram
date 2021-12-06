@@ -60,6 +60,7 @@ public class MessageSeenView extends FrameLayout {
     ArrayList<Long> peerIds = new ArrayList<>();
     public ArrayList<TLRPC.User> users = new ArrayList<>();
     public ArrayList<TLRPC.User> allUsers = new ArrayList<>();
+    public ArrayList<TLRPC.User> filteredUsers = new ArrayList<>();
     AvatarsImageView avatarsImageView;
     TextView titleView;
     ImageView iconView;
@@ -67,12 +68,22 @@ public class MessageSeenView extends FrameLayout {
     int currentAccount;
     boolean isVoice;
     int reactedCount;
+    String currentReactionFilter = "-";
+    String currentNextOffset = null;
+    long dialogId;
+    int messageId;
 
     FlickerLoadingView flickerLoadingView;
+
+    RecyclerListView recyclerListView;
+    public int availableHeight;
+    boolean loadingNext;
 
     public MessageSeenView(@NonNull Context context, int currentAccount, MessageObject messageObject, TLRPC.Chat chat) {
         super(context);
         this.currentAccount = currentAccount;
+        this.dialogId = messageObject.getDialogId();
+        this.messageId = messageObject.getId();
         isVoice = (messageObject.isRoundVideo() || messageObject.isVoice());
         flickerLoadingView = new FlickerLoadingView(context);
         flickerLoadingView.setColors(Theme.key_actionBarDefaultSubmenuBackground, Theme.key_listSelector, null);
@@ -122,7 +133,7 @@ public class MessageSeenView extends FrameLayout {
 
         TLRPC.TL_messages_getMessageReactionsList rreq = new TLRPC.TL_messages_getMessageReactionsList();
         rreq.id = messageObject.getId();
-        rreq.peer = MessagesController.getInstance(currentAccount).getInputPeer(messageObject.getDialogId());
+        rreq.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
         rreq.limit = 100;
         ConnectionsManager.getInstance(currentAccount).sendRequest(rreq, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
             FileLog.e("MessageSeenView reactions request completed");
@@ -137,6 +148,8 @@ public class MessageSeenView extends FrameLayout {
                 MessagesController.getInstance(currentAccount).putUser(user, false);
                 usersLocal.put(user.id, user);
             }
+
+            currentNextOffset = res.next_offset;
 
             reactions = res.reactions;
             ReactionsController reactionsController = ReactionsController.getInstance(currentAccount);
@@ -261,6 +274,129 @@ public class MessageSeenView extends FrameLayout {
         }
     }
 
+    public void updateListViewHeight() {
+        if (recyclerListView == null) {
+            return;
+        }
+        int listViewTotalHeight = AndroidUtilities.dp(8) + AndroidUtilities.dp(44) * filteredUsers.size();
+        if (listViewTotalHeight > availableHeight) {
+            if (availableHeight > AndroidUtilities.dp(620)) {
+                recyclerListView.getLayoutParams().height = AndroidUtilities.dp(620);
+            } else {
+                recyclerListView.getLayoutParams().height = availableHeight;
+            }
+        } else {
+            recyclerListView.getLayoutParams().height = listViewTotalHeight;
+        }
+    }
+
+    public void updateFilteredUsers(String reaction, boolean load) {
+        if (!currentReactionFilter.equals(reaction)) {
+            currentReactionFilter = reaction;
+            currentNextOffset = null;
+        }
+        filteredUsers.clear();
+        for (TLRPC.User user : allUsers) {
+            // Do not display viewers until we loaded all reactions!
+            if (currentNextOffset != null && reaction.equals("-") && !userReaction.containsKey(user.id)) {
+                break;
+            }
+            if (reaction.equals("-") || (userReaction.get(user.id) != null && userReaction.get(user.id).reaction.equals(reaction))) {
+                filteredUsers.add(user);
+            }
+        }
+        if (recyclerListView != null) {
+            recyclerListView.getAdapter().notifyDataSetChanged();
+        }
+
+        if (!reaction.equals("-") && load) {
+            TLRPC.TL_messages_getMessageReactionsList rreq = new TLRPC.TL_messages_getMessageReactionsList();
+            rreq.flags = 1;
+            rreq.id = messageId;
+            rreq.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+            rreq.limit = 50;
+            rreq.reaction = reaction;
+            ConnectionsManager.getInstance(currentAccount).sendRequest(rreq, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                if (error != null) {
+                    updateView();
+                    return;
+                }
+
+                TLRPC.TL_messages_messageReactionsList res = (TLRPC.TL_messages_messageReactionsList) response;
+                HashMap<Long, TLRPC.User> usersLocal = new HashMap<>();
+                for (TLRPC.User user : res.users) {
+                    MessagesController.getInstance(currentAccount).putUser(user, false);
+                    usersLocal.put(user.id, user);
+                }
+
+                currentNextOffset = res.next_offset;
+                reactions = res.reactions;
+                ReactionsController reactionsController = ReactionsController.getInstance(currentAccount);
+                filteredUsers.clear();
+                for (TLRPC.TL_messageUserReaction r : reactions) {
+                    userReaction.put(r.user_id, reactionsController.getReaction(r.reaction));
+                    TLRPC.User user = usersLocal.get(r.user_id);
+                    if (user == null) {
+                        user = MessagesController.getInstance(currentAccount).getUser(r.user_id);
+                    }
+                    filteredUsers.add(user);
+                }
+                if (recyclerListView != null) {
+                    recyclerListView.getAdapter().notifyDataSetChanged();
+                    updateListViewHeight();
+                }
+            }));
+        } else {
+            updateListViewHeight();
+        }
+    }
+
+    public void loadNextUsers() {
+        if (currentNextOffset == null || loadingNext) {
+            return;
+        }
+        loadingNext = true;
+        TLRPC.TL_messages_getMessageReactionsList rreq = new TLRPC.TL_messages_getMessageReactionsList();
+        rreq.flags = 2;
+        rreq.id = messageId;
+        rreq.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+        rreq.limit = 50;
+        rreq.offset = currentNextOffset;
+        if (currentReactionFilter != null && !currentReactionFilter.equals("-")) {
+            rreq.flags |= 1;
+            rreq.reaction = currentReactionFilter;
+        }
+        ConnectionsManager.getInstance(currentAccount).sendRequest(rreq, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+            if (error != null) {
+                currentNextOffset = null;
+                loadingNext = false;
+                return;
+            }
+
+            TLRPC.TL_messages_messageReactionsList res = (TLRPC.TL_messages_messageReactionsList) response;
+            HashMap<Long, TLRPC.User> usersLocal = new HashMap<>();
+            for (TLRPC.User user : res.users) {
+                MessagesController.getInstance(currentAccount).putUser(user, false);
+                usersLocal.put(user.id, user);
+            }
+
+            currentNextOffset = res.next_offset;
+            ReactionsController reactionsController = ReactionsController.getInstance(currentAccount);
+            for (TLRPC.TL_messageUserReaction r : res.reactions) {
+                userReaction.put(r.user_id, reactionsController.getReaction(r.reaction));
+                TLRPC.User user = usersLocal.get(r.user_id);
+                if (user == null) {
+                    user = MessagesController.getInstance(currentAccount).getUser(r.user_id);
+                }
+                filteredUsers.add(user);
+            }
+            if (recyclerListView != null) {
+                recyclerListView.getAdapter().notifyDataSetChanged();
+            }
+            loadingNext = false;
+        }));
+    }
+
     private void updateAllUsers() {
         allUsers.clear();
         for (TLRPC.User user : reactedUsers) {
@@ -271,6 +407,7 @@ public class MessageSeenView extends FrameLayout {
                 allUsers.add(user);
             }
         }
+        updateFilteredUsers(currentReactionFilter, false);
     }
 
     private void updateView() {
@@ -315,7 +452,7 @@ public class MessageSeenView extends FrameLayout {
     }
 
     public RecyclerListView createListView() {
-        RecyclerListView recyclerListView = new RecyclerListView(getContext());
+        recyclerListView = new RecyclerListView(getContext());
         recyclerListView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerListView.addItemDecoration(new RecyclerView.ItemDecoration() {
             @Override
@@ -346,13 +483,17 @@ public class MessageSeenView extends FrameLayout {
             @Override
             public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
                 UserCell cell = (UserCell) holder.itemView;
-                cell.setUser(allUsers.get(position));
-                cell.setReaction(userReaction.get(allUsers.get(position).id));
+                cell.setUser(filteredUsers.get(position));
+                cell.setReaction(userReaction.get(filteredUsers.get(position).id));
+
+                if (position > filteredUsers.size() - 10) {
+                    loadNextUsers();
+                }
             }
 
             @Override
             public int getItemCount() {
-                return allUsers.size();
+                return filteredUsers.size();
             }
 
         });
@@ -381,7 +522,7 @@ public class MessageSeenView extends FrameLayout {
 
 
             reactionImageView = new BackupImageView(context);
-            addView(reactionImageView, LayoutHelper.createFrame(24, 24, Gravity.RIGHT | Gravity.CENTER_VERTICAL, 0, 0, 13, 0));
+            addView(reactionImageView, LayoutHelper.createFrame(24, 24, Gravity.LEFT | Gravity.CENTER_VERTICAL, 205, 0, 13, 0));
             reactionImageView.setVisibility(GONE);
         }
 
