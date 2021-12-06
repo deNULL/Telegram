@@ -199,7 +199,7 @@ public class Reactions {
         ca.scrimPopupWindow.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED);
         ca.scrimPopupWindow.getContentView().setFocusableInTouchMode(true);
 
-        int popupX = cell.getLeft() + (int) x - linearLayout.getMeasuredWidth() + backgroundPaddings.left - AndroidUtilities.dp(28);
+        int popupX = cell.getLeft() + (int) x - backgroundPaddings.left/* - linearLayout.getMeasuredWidth() + backgroundPaddings.left - AndroidUtilities.dp(28)*/;
         if (popupX < AndroidUtilities.dp(6)) {
             popupX = AndroidUtilities.dp(6);
         } else if (popupX > ca.chatListView.getMeasuredWidth() - AndroidUtilities.dp(6) - linearLayout.getMeasuredWidth()) {
@@ -217,7 +217,7 @@ public class Reactions {
         }
         int popupY;
         if (height < totalHeight) {
-            popupY = (int) (ca.chatListView.getY() + cell.getTop() + y);
+            popupY = (int) (ca.chatListView.getY() + cell.getTop() + y - AndroidUtilities.dp(3));
             if (height - backgroundPaddings.top - backgroundPaddings.bottom > AndroidUtilities.dp(240)) {
                 popupY += AndroidUtilities.dp(240) - height;
             }
