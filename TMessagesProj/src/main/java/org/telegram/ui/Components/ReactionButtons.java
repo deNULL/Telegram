@@ -324,7 +324,7 @@ public class ReactionButtons {
         this.listener = listener;
     }
 
-    public boolean onTouch(int action, float x, float y, int time) {
+    public boolean onTouch(int action, float x, float y, long time) {
         if (action == MotionEvent.ACTION_DOWN) {
             pressedButton = getButtonAt(x, y);
             return pressedButton != null;

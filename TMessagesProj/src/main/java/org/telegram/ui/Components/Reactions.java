@@ -20,8 +20,10 @@ import androidx.core.content.ContextCompat;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageObject;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.ActionBarPopupWindow;
@@ -32,6 +34,22 @@ import org.telegram.ui.ProfileActivity;
 
 public class Reactions {
     // This is just static utils to reduce the amount of garbage in ChatActivity and other classes
+
+    public static void sendReaction(ChatActivity ca, int currentAccount, MessageObject message, String reaction, float x, float y) {
+        TLRPC.TL_messages_sendReaction req = new TLRPC.TL_messages_sendReaction();
+        req.peer = MessagesController.getInstance(currentAccount).getInputPeer(message.messageOwner.dialog_id);
+        req.msg_id = message.messageOwner.id;
+        if (reaction != null) {
+            req.flags = 1;
+            req.reaction = reaction;
+        }
+        ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+            if (error != null) {
+                return;
+            }
+            MessagesController.getInstance(currentAccount).processUpdates((TLRPC.Updates) response, false);
+        }));
+    }
 
     public static void openReactionsMenu(ChatActivity ca, MessageSeenView messageSeenView, Rect rect, MessageObject message) {
         if (ca.scrimPopupWindow == null || messageSeenView.allUsers.isEmpty()) {

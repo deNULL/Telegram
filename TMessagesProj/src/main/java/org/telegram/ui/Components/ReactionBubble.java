@@ -6,6 +6,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -49,6 +50,13 @@ public class ReactionBubble extends FrameLayout {
     private Path clipPath;
 
     ArrayList<TLRPC.TL_availableReaction> reactions;
+
+    OnClickListener listener;
+    int pressedReaction = -1;
+
+    public interface OnClickListener {
+        void onClick(String reaction, float x, float y);
+    }
 
     public ReactionBubble(Context context, ArrayList<TLRPC.TL_availableReaction> reactions) {
         super(context);
@@ -109,6 +117,36 @@ public class ReactionBubble extends FrameLayout {
             protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
                 setMeasuredDimension(innerWidth, height);
             }
+
+            @Override
+            public boolean onTouchEvent(MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    pressedReaction = -1;
+                    float x = event.getX();
+                    float y = event.getY();
+                    for (int i = 0; i < buttons.length; i++) {
+                        ImageReceiver btn = buttons[i];
+                        if (x > btn.getImageX() && x < btn.getImageX() + btn.getImageWidth() && y > btn.getImageY() && y < btn.getImageY() + btn.getImageHeight()) {
+                            pressedReaction = i;
+                            return true;
+                        }
+                    }
+                } else
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    if (pressedReaction != -1 && listener != null) {
+                        ImageReceiver btn = buttons[pressedReaction];
+                        listener.onClick(reactions.get(pressedReaction).reaction, btn.getCenterX(), btn.getCenterY());
+                        pressedReaction = -1;
+                        return true;
+                    }
+                    pressedReaction = -1;
+                } else
+                if (event.getAction() == MotionEvent.ACTION_CANCEL) {
+                    pressedReaction = -1;
+                }
+
+                return super.onTouchEvent(event);
+            }
         };
         buttonContainer.setWillNotDraw(false);
         scrollView.addView(buttonContainer, new FrameLayout.LayoutParams(innerWidth, height));
@@ -124,6 +162,10 @@ public class ReactionBubble extends FrameLayout {
             );
             buttons[i].setImage(ImageLocation.getForDocument(reaction.static_icon), "50_50", null, null, null, 0);
         }
+    }
+
+    public void setOnClickListener(OnClickListener listener) {
+        this.listener = listener;
     }
 
     public void setWidth(int maxWidth) {

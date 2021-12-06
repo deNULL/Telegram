@@ -20073,6 +20073,18 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     }
                 }
                 reactionBubble = new ReactionBubble(contentView.getContext(), reactions);
+                final ReactionBubble finalReactionBubble = reactionBubble;
+                reactionBubble.setOnClickListener(new ReactionBubble.OnClickListener() {
+                    @Override
+                    public void onClick(String reaction, float x, float y) {
+                        int[] coord = new int[2];
+                        finalReactionBubble.getLocationOnScreen(coord);
+                        Reactions.sendReaction(ChatActivity.this, currentAccount, message, reaction, coord[0] + x, coord[1] + y);
+                        if (scrimPopupWindow != null) {
+                            scrimPopupWindow.dismiss();
+                        }
+                    }
+                });
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutHelper.MATCH_PARENT, reactionBubble.height);
                 params.setMargins( AndroidUtilities.dp(ReactionBubble.marginLeft), 0, 0, AndroidUtilities.dp(ReactionBubble.marginBottom));
                 scrimPopupContainerLayout.addView(reactionBubble, params);

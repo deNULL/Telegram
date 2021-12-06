@@ -122,6 +122,7 @@ import org.telegram.ui.Components.Point;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RadialProgress2;
 import org.telegram.ui.Components.ReactionButtons;
+import org.telegram.ui.Components.Reactions;
 import org.telegram.ui.Components.RoundVideoPlayingDrawable;
 import org.telegram.ui.Components.SeekBar;
 import org.telegram.ui.Components.SeekBarAccessibilityDelegate;
@@ -911,6 +912,18 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         roundVideoPlayingDrawable = new RoundVideoPlayingDrawable(this, resourcesProvider);
 
         reactionButtons = new ReactionButtons(this);
+        reactionButtons.setOnClickListener(new ReactionButtons.OnClickListener() {
+            @Override
+            public void onClick(ReactionButtons.Button button, String reaction, boolean longClick) {
+                if (reactionButtons.activeReaction.equals(reaction)) {
+                    Reactions.sendReaction(null, currentAccount, currentMessageObject, null, 0, 0);
+                    reactionButtons.setActiveReaction("");
+                } else {
+                    Reactions.sendReaction(null, currentAccount, currentMessageObject, reaction, 0, 0);
+                    reactionButtons.setActiveReaction(reaction);
+                }
+            }
+        });
     }
 
     private void createPollUI() {
@@ -1542,11 +1555,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             }
         }
         return result;
-    }
-
-    private boolean checkReactionButtonMotionEvent(MotionEvent event) {
-        boolean result = false;
-        return false;
     }
 
     private boolean checkInstantButtonMotionEvent(MotionEvent event) {
@@ -15133,6 +15141,34 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     
     private boolean hasGradientService() {
         return resourcesProvider != null ? resourcesProvider.hasGradientService() : Theme.hasGradientService();
+    }
+
+
+    private boolean checkReactionButtonMotionEvent(MotionEvent event) {
+        if (reactionButtons.mode == MODE_MICRO || reactionButtons.buttons.isEmpty()) {
+            return false; // too small to process touches
+        }
+
+        // TODO: reuse code from drawing
+        float dx = 0;
+        float dy = 0;
+        if (reactionButtons.mode == ReactionButtons.MODE_INSIDE) {
+            dx = getCurrentBackgroundLeft() + reactionsLeft;
+            dy = totalHeight - reactionsBottom;
+        } else {
+            int addX;
+            if (currentMessageObject.isOutOwner()) {
+                addX = getMeasuredWidth() - widthForButtons - AndroidUtilities.dp(10);
+            } else {
+                addX = backgroundDrawableLeft + AndroidUtilities.dp(mediaBackground || drawPinnedBottom ? 1 : 7);
+            }
+
+            // Place below inline buttons?
+            dx = addX;
+            dy = totalHeight + keyboardHeight + AndroidUtilities.dp(4);
+        }
+
+        return reactionButtons.onTouch(event.getAction(), event.getX() - dx, event.getY() - dy, event.getEventTime() - event.getDownTime());
     }
 
     private void drawReactionButtons(Canvas canvas) {
